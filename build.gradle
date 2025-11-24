@@ -25,6 +25,9 @@ dependencies {
     // Spring Boot 기본 웹 기능
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
+    // Validation (요청 데이터 검증)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    
     // Spring Security (인증/인가)
     implementation 'org.springframework.boot:spring-boot-starter-security'
     
@@ -40,6 +43,11 @@ dependencies {
     // Lombok (보일러플레이트 코드 자동 생성)
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    
+    // JWT 라이브러리 (JSON Web Token)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
     
     // 개발 도구
     developmentOnly 'org.springframework.boot:spring-boot-devtools'

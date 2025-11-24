@@ -44,3 +44,13 @@ logging:
     com.example.app: DEBUG
     org.springframework.security: DEBUG
 
+# JWT 설정
+app:
+  jwt:
+    # JWT 토큰 서명에 사용할 비밀키
+    # 주의: 운영 환경에서는 반드시 강력한 랜덤 문자열로 변경하세요!
+    secret: your-secret-key-change-this-in-production-minimum-256-bits
+    # JWT 토큰 만료 시간 (밀리초)
+    # 기본값: 1시간 (3600000ms)
+    expiration-millis: 3600000
+
