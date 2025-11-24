@@ -1,6 +1,7 @@
 package com.example.app.domain.user;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import java.util.Optional;
  * - 비즈니스 로직 구현
  * - 트랜잭션 관리
  * - 여러 리포지토리를 조합하여 복잡한 작업 수행
+ * - 비밀번호 암호화 처리
  * 
  * @Service: Spring이 이 클래스를 서비스 빈으로 등록합니다.
  * @RequiredArgsConstructor: final 필드에 대한 생성자를 자동 생성합니다 (의존성 주입용).
@@ -25,6 +27,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;  // BCryptPasswordEncoder 주입
 
     /**
      * 모든 사용자 조회
@@ -68,17 +71,51 @@ public class UserService {
     /**
      * 새 사용자 생성
      * 
-     * @param user 생성할 사용자 정보
-     * @return 저장된 사용자
+     * 이 메서드는 다음 작업을 수행합니다:
+     * 1. 사용자명 중복 체크
+     * 2. 비밀번호를 BCrypt로 암호화
+     * 3. 사용자 정보 저장
+     * 
+     * 주의: 전달받은 User 엔티티의 password는 평문이어야 하며,
+     * 이 메서드에서 자동으로 BCrypt 해시로 변환됩니다.
+     * 
+     * @param user 생성할 사용자 정보 (password는 평문)
+     * @return 저장된 사용자 (password는 BCrypt 해시)
+     * @throws IllegalArgumentException 사용자명 또는 이메일이 이미 존재하는 경우
      */
     @Transactional  // 쓰기 작업이므로 읽기 전용 해제
-    public User create(User user) {
-        // 중복 체크
-        if (userRepository.existsByUsernameOrEmail(user.getUsername(), user.getEmail())) {
-            throw new IllegalArgumentException("이미 존재하는 사용자명 또는 이메일입니다.");
+    public User createUser(User user) {
+        // 사용자명 중복 체크
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new IllegalArgumentException("이미 존재하는 사용자명입니다: " + user.getUsername());
         }
         
-        return userRepository.save(user);
+        // 이메일 중복 체크 (이메일이 있는 경우만)
+        if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+            if (userRepository.existsByEmail(user.getEmail())) {
+                throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + user.getEmail());
+            }
+        }
+        
+        // 비밀번호를 BCrypt로 암호화
+        // 평문 비밀번호를 해시로 변환하여 저장
+        String encodedPassword = passwordEncoder.encode(user.getPassword());
+        
+        // 암호화된 비밀번호로 User 엔티티 생성
+        User userToSave = User.builder()
+                .username(user.getUsername())
+                .password(encodedPassword)  // 암호화된 비밀번호
+                .email(user.getEmail())
+                .name(user.getName())
+                .active(user.getActive() != null ? user.getActive() : true)
+                .build();
+        
+        // 역할이 있다면 추가
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            user.getRoles().forEach(userToSave::addRole);
+        }
+        
+        return userRepository.save(userToSave);
     }
 
     /**

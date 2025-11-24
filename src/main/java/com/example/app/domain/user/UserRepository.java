@@ -34,6 +34,22 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     /**
+     * 사용자명으로 사용자 존재 여부 확인
+     * 
+     * @param username 사용자명
+     * @return 존재하면 true
+     */
+    boolean existsByUsername(String username);
+
+    /**
+     * 이메일로 사용자 존재 여부 확인
+     * 
+     * @param email 이메일
+     * @return 존재하면 true
+     */
+    boolean existsByEmail(String email);
+
+    /**
      * 사용자명 또는 이메일로 사용자 존재 여부 확인
      * 
      * @param username 사용자명
