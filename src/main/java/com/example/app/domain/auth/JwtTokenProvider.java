@@ -118,22 +118,20 @@ public class JwtTokenProvider {
      * jjwt 0.12.3 버전에서는 parseSignedClaims()가 자동으로 만료 시간도 검증합니다.
      * 
      * @param token JWT 토큰 문자열
-     * @return 유효하면 true, 그렇지 않으면 false
+     * @return 유효하면 true
+     * @throws ExpiredJwtException 토큰이 만료된 경우
+     * @throws JwtException 토큰이 잘못된 경우 (서명 오류, 형식 오류 등)
      */
-    public boolean validateToken(String token) {
-        try {
-            // jjwt 0.12.3 버전 문법 사용
-            // parseSignedClaims()가 서명 검증과 만료 시간 검증을 모두 수행합니다.
-            Jwts.parser()
-                    .verifyWith(getSecretKey())  // 서명 검증에 사용할 키
-                    .build()
-                    .parseSignedClaims(token);  // 서명된 JWT 파싱 (만료 시간도 자동 검증)
-            
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            log.error("JWT 토큰 검증 실패: {}", e.getMessage());
-            return false;
-        }
+    public boolean validateToken(String token) throws JwtException {
+        // jjwt 0.12.3 버전 문법 사용
+        // parseSignedClaims()가 서명 검증과 만료 시간 검증을 모두 수행합니다.
+        // 예외가 발생하면 호출한 쪽에서 예외 타입을 구분하여 처리할 수 있습니다.
+        Jwts.parser()
+                .verifyWith(getSecretKey())  // 서명 검증에 사용할 키
+                .build()
+                .parseSignedClaims(token);  // 서명된 JWT 파싱 (만료 시간도 자동 검증)
+        
+        return true;
     }
 
     /**

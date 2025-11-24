@@ -1,5 +1,7 @@
 package com.example.app.domain.auth;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -71,44 +73,71 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 1. HTTP 요청 헤더에서 JWT 토큰 추출
             String token = getTokenFromRequest(request);
 
-            // 2. 토큰이 있고 유효한 경우
-            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
-                // 3. 토큰에서 사용자명 추출
+            // 2. 토큰이 없는 경우
+            if (!StringUtils.hasText(token)) {
+                // 토큰이 없음을 request attribute에 저장
+                // JwtAuthenticationEntryPoint에서 이 값을 읽어서 응답을 세분화합니다.
+                request.setAttribute("exception", "TOKEN_MISSING");
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 3. 토큰이 있는 경우 검증 및 인증 처리
+            try {
+                // 토큰 유효성 검증 (예외가 발생하면 catch 블록에서 처리)
+                jwtTokenProvider.validateToken(token);
+                
+                // 검증 성공 시 인증 처리
+                // 4. 토큰에서 사용자명 추출
                 String username = jwtTokenProvider.getUsernameFromToken(token);
 
-                // 4. 사용자 정보 로드 (이미 SecurityContext에 없을 때만)
+                // 5. 사용자 정보 로드 (이미 SecurityContext에 없을 때만)
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // 5. UserDetails 조회
+                    // 6. UserDetails 조회
                     var userDetails = userDetailsService.loadUserByUsername(username);
 
-                    // 6. 토큰에서 권한 정보 추출
+                    // 7. 토큰에서 권한 정보 추출
                     String authoritiesString = jwtTokenProvider.getAuthoritiesFromToken(token);
                     List<SimpleGrantedAuthority> authorities = Arrays.stream(
                                     authoritiesString.split(","))
                             .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toList());
 
-                    // 7. Authentication 객체 생성
+                    // 8. Authentication 객체 생성
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,  // credentials는 null (이미 인증됨)
                                     authorities);
 
-                    // 8. 요청 정보 설정
+                    // 9. 요청 정보 설정
                     authentication.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    // 9. SecurityContext에 인증 정보 설정
+                    // 10. SecurityContext에 인증 정보 설정
                     // 이렇게 설정하면 Controller에서 @AuthenticationPrincipal로 접근 가능
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
                     log.debug("JWT 토큰 인증 성공: {}", username);
                 }
+            } catch (ExpiredJwtException e) {
+                // 토큰 만료 예외
+                // JwtAuthenticationEntryPoint에서 이 값을 읽어서 "TOKEN_EXPIRED" 응답을 반환합니다.
+                log.warn("JWT 토큰 만료: {}", e.getMessage());
+                request.setAttribute("exception", "TOKEN_EXPIRED");
+            } catch (JwtException e) {
+                // 기타 JWT 예외 (잘못된 토큰, 서명 오류 등)
+                // JwtAuthenticationEntryPoint에서 이 값을 읽어서 "TOKEN_INVALID" 응답을 반환합니다.
+                log.warn("JWT 토큰 검증 실패: {}", e.getMessage());
+                request.setAttribute("exception", "TOKEN_INVALID");
+            } catch (Exception e) {
+                // 기타 예외 (예: IllegalArgumentException 등)
+                log.error("JWT 토큰 인증 중 예외 발생: {}", e.getMessage());
+                request.setAttribute("exception", "TOKEN_INVALID");
             }
         } catch (Exception e) {
-            log.error("JWT 토큰 인증 실패: {}", e.getMessage());
-            // 인증 실패해도 요청은 계속 진행 (다른 필터나 SecurityConfig에서 처리)
+            log.error("JWT 필터 처리 중 예외 발생: {}", e.getMessage());
+            // 예외 발생 시에도 요청은 계속 진행 (다른 필터나 SecurityConfig에서 처리)
         }
 
         // 10. 다음 필터로 요청 전달
