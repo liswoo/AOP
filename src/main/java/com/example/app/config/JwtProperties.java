@@ -40,3 +40,5 @@ public class JwtProperties {
     private Long expirationMillis = 3600000L;
 }
 
+
+

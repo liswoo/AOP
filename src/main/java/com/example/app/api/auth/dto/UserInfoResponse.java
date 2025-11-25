@@ -23,3 +23,5 @@ public class UserInfoResponse {
     private String role;  // 주요 역할 (예: "ADMIN", "USER")
 }
 
+
+

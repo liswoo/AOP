@@ -143,5 +143,43 @@ public class User extends BaseEntity {
     public void removeRole(Role role) {
         this.roles.remove(role);
     }
+
+    /**
+     * 이메일 수정
+     * 
+     * @param email 새 이메일 주소
+     */
+    public void updateEmail(String email) {
+        this.email = email;
+    }
+
+    /**
+     * 이름 수정
+     * 
+     * @param name 새 이름
+     */
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * 비밀번호 수정
+     * 
+     * 주의: 이미 BCrypt로 암호화된 비밀번호를 전달해야 합니다.
+     * 
+     * @param encodedPassword 암호화된 비밀번호
+     */
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
+    /**
+     * 활성화 상태 수정
+     * 
+     * @param active 활성화 여부
+     */
+    public void updateActive(Boolean active) {
+        this.active = active;
+    }
 }
 

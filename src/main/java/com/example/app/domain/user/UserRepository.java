@@ -1,6 +1,10 @@
 package com.example.app.domain.user;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -57,5 +61,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return 존재하면 true
      */
     boolean existsByUsernameOrEmail(String username, String email);
+
+    /**
+     * 키워드로 사용자 검색 (페이지네이션 지원)
+     * 
+     * username 또는 name에 키워드가 포함된 사용자를 검색합니다.
+     * 키워드가 null이거나 빈 문자열이면 모든 사용자를 반환합니다.
+     * 
+     * @param keyword 검색 키워드 (username 또는 name에 LIKE 검색)
+     * @param pageable 페이지네이션 정보
+     * @return 사용자 페이지
+     */
+    @Query("SELECT u FROM User u WHERE " +
+           "(:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 }
 

@@ -1,6 +1,11 @@
 package com.example.app.domain.user;
 
+import com.example.app.api.admin.dto.UserCreateRequest;
+import com.example.app.api.admin.dto.UserUpdateRequest;
+import com.example.app.domain.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -150,6 +155,174 @@ public class UserService {
         
         // TODO: 실제 삭제 대신 active = false로 변경하는 메서드 추가 예정
         userRepository.delete(user);
+    }
+
+    // ========== 어드민용 사용자 관리 메서드 ==========
+
+    /**
+     * 키워드로 사용자 검색 (페이지네이션 지원)
+     * 
+     * 어드민이 사용자 목록을 조회할 때 사용하는 메서드입니다.
+     * username 또는 name에 키워드가 포함된 사용자를 검색합니다.
+     * 
+     * @param keyword 검색 키워드 (null이거나 빈 문자열이면 전체 조회)
+     * @param pageable 페이지네이션 정보 (page, size)
+     * @return 사용자 페이지
+     */
+    public Page<User> searchUsers(String keyword, Pageable pageable) {
+        // null이거나 빈 문자열인 경우 빈 문자열로 변환하여 전체 조회
+        String searchKeyword = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
+        return userRepository.searchUsers(searchKeyword, pageable);
+    }
+
+    /**
+     * ID로 사용자 조회 (어드민용)
+     * 
+     * 사용자를 찾을 수 없으면 UserNotFoundException을 발생시킵니다.
+     * 
+     * @param id 사용자 ID
+     * @return User 엔티티
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    /**
+     * 사용자 생성 (어드민용)
+     * 
+     * 어드민이 새 사용자 계정을 생성할 때 사용하는 메서드입니다.
+     * 
+     * @param request 사용자 생성 요청 DTO
+     * @return 생성된 사용자
+     * @throws IllegalArgumentException username 중복 또는 이메일 중복 시
+     */
+    @Transactional
+    public User createUser(UserCreateRequest request) {
+        // username 중복 체크
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new IllegalArgumentException("이미 존재하는 사용자명입니다: " + request.getUsername());
+        }
+
+        // 이메일 중복 체크
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + request.getEmail());
+        }
+
+        // 역할 조회
+        String roleCode = "ROLE_" + request.getRole();
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 역할입니다: " + request.getRole()));
+
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        // User 엔티티 생성
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(encodedPassword)
+                .email(request.getEmail())
+                .name(request.getName())
+                .active(true)
+                .build();
+
+        // 역할 할당
+        user.addRole(role);
+
+        return userRepository.save(user);
+    }
+
+    /**
+     * 사용자 정보 수정 (어드민용)
+     * 
+     * 어드민이 사용자 정보를 수정할 때 사용하는 메서드입니다.
+     * 비밀번호는 이 메서드에서 변경하지 않습니다.
+     * 
+     * @param id 사용자 ID
+     * @param request 사용자 수정 요청 DTO
+     * @return 수정된 사용자
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
+     * @throws IllegalArgumentException 이메일 중복 또는 잘못된 역할인 경우
+     */
+    @Transactional
+    public User updateUser(Long id, UserUpdateRequest request) {
+        User user = getUserById(id);
+
+        // 이메일 수정 (제공된 경우만)
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            // 이메일 중복 체크 (다른 사용자가 이미 사용 중인지 확인)
+            Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+            if (existingUser.isPresent() && !existingUser.get().getId().equals(id)) {
+                throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + request.getEmail());
+            }
+            user.updateEmail(request.getEmail().trim());
+        }
+
+        // 이름 수정 (제공된 경우만)
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            user.updateName(request.getName().trim());
+        }
+
+        // 역할 수정 (제공된 경우만)
+        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
+            String roleCode = "ROLE_" + request.getRole();
+            Role role = roleRepository.findByCode(roleCode)
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 역할입니다: " + request.getRole()));
+            
+            // 기존 역할 제거 후 새 역할 할당
+            user.getRoles().clear();
+            user.addRole(role);
+        }
+
+        // 활성화 상태 수정 (제공된 경우만)
+        if (request.getEnabled() != null) {
+            user.updateActive(request.getEnabled());
+        }
+        
+        return userRepository.save(user);
+    }
+
+    /**
+     * 사용자 비밀번호 변경 (어드민용)
+     * 
+     * 어드민이 사용자의 비밀번호를 변경할 때 사용하는 메서드입니다.
+     * 
+     * @param id 사용자 ID
+     * @param rawPassword 평문 비밀번호 (BCrypt로 암호화됨)
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional
+    public void changePassword(Long id, String rawPassword) {
+        User user = getUserById(id);
+        
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        
+        // 비밀번호 업데이트
+        user.updatePassword(encodedPassword);
+        
+        userRepository.save(user);
+    }
+
+    /**
+     * 사용자 활성/비활성 상태 변경 (어드민용)
+     * 
+     * 어드민이 사용자의 활성화 상태를 변경할 때 사용하는 메서드입니다.
+     * 
+     * @param id 사용자 ID
+     * @param enabled 활성화 여부
+     * @return 변경된 사용자
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
+     */
+    @Transactional
+    public User updateStatus(Long id, boolean enabled) {
+        User user = getUserById(id);
+        
+        // 활성화 상태 업데이트
+        user.updateActive(enabled);
+        
+        return userRepository.save(user);
     }
 }
 
