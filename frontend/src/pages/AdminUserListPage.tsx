@@ -11,8 +11,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { getUsers, createUser } from '../api/adminUserApi';
-import { Page, UserSummary, UserCreateRequest } from '../types';
+import { getUsers, createUser, updateUser, updateUserStatus, deleteUser } from '../api/adminUserApi';
+import { Page, UserSummary, UserCreateRequest, UserUpdateRequest } from '../types';
 import AdminUserTable from '../components/AdminUserTable';
 import AdminUserCreateForm from '../components/AdminUserCreateForm';
 
@@ -63,6 +63,8 @@ const AdminUserListPage: React.FC = () => {
   /**
    * 새 사용자 생성 핸들러
    * 
+   * POST /api/admin/users API를 호출하여 새 사용자를 생성합니다.
+   * 
    * @param userData 생성할 사용자 정보
    */
   const handleCreateUser = async (userData: UserCreateRequest) => {
@@ -77,7 +79,79 @@ const AdminUserListPage: React.FC = () => {
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       }
+      setError(errorMessage);
       alert(errorMessage);
+    }
+  };
+
+  /**
+   * 사용자 정보 수정 핸들러
+   * 
+   * PUT /api/admin/users/{id} API를 호출하여 사용자 정보를 수정합니다.
+   * 
+   * @param id 수정할 사용자 ID
+   * @param payload 수정할 사용자 정보
+   */
+  const handleUpdateUser = async (id: number, payload: UserUpdateRequest) => {
+    try {
+      await updateUser(id, payload);
+      // 수정 성공 시 목록을 다시 불러옴
+      await loadUsers();
+    } catch (err: any) {
+      console.error('사용자 수정 실패:', err);
+      let errorMessage = '사용자 수정에 실패했습니다.';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      setError(errorMessage);
+      throw err; // AdminUserTable에서 처리할 수 있도록 에러를 다시 throw
+    }
+  };
+
+  /**
+   * 사용자 상태 변경 핸들러
+   * 
+   * PATCH /api/admin/users/{id}/status API를 호출하여 사용자의 활성화 상태를 변경합니다.
+   * 
+   * @param id 상태를 변경할 사용자 ID
+   * @param enabled 활성화 여부
+   */
+  const handleStatusChange = async (id: number, enabled: boolean) => {
+    try {
+      await updateUserStatus(id, enabled);
+      // 상태 변경 성공 시 목록을 다시 불러옴
+      await loadUsers();
+    } catch (err: any) {
+      console.error('상태 변경 실패:', err);
+      let errorMessage = '상태 변경에 실패했습니다.';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      setError(errorMessage);
+      throw err; // AdminUserTable에서 처리할 수 있도록 에러를 다시 throw
+    }
+  };
+
+  /**
+   * 사용자 삭제 핸들러
+   * 
+   * DELETE /api/admin/users/{id} API를 호출하여 사용자를 물리적으로 삭제합니다.
+   * 
+   * @param id 삭제할 사용자 ID
+   */
+  const handleDeleteUser = async (id: number) => {
+    try {
+      await deleteUser(id);
+      // 삭제 성공 시 목록을 다시 불러옴
+      await loadUsers();
+    } catch (err: any) {
+      console.error('사용자 삭제 실패:', err);
+      let errorMessage = '사용자 삭제에 실패했습니다.';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      setError(errorMessage);
+      throw err; // AdminUserTable에서 처리할 수 있도록 에러를 다시 throw
     }
   };
 
@@ -144,7 +218,13 @@ const AdminUserListPage: React.FC = () => {
           <div style={styles.loading}>로딩 중...</div>
         ) : userPage ? (
           <>
-            <AdminUserTable users={userPage.content} />
+            <AdminUserTable
+              users={userPage.content}
+              onUpdate={handleUpdateUser}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDeleteUser}
+              onReload={loadUsers}
+            />
             
             {/* 페이지네이션 */}
             <div style={styles.pagination}>

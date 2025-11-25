@@ -81,6 +81,13 @@ import org.springframework.web.bind.annotation.*;
  *      "enabled": false
  *    }
  * 
+ * 8. 사용자 삭제:
+ *    DELETE http://localhost:8080/api/admin/users/2
+ *    Headers: Authorization: Bearer {accessToken}
+ *    → 204 No Content (성공 시)
+ *    → 400 Bad Request (ADMIN 계정 삭제 시도 시)
+ *    → 404 Not Found (존재하지 않는 사용자)
+ * 
  * @RestController: REST API 컨트롤러로 인식
  * @Slf4j: 로깅을 위한 Lombok 어노테이션
  */
@@ -128,7 +135,7 @@ public class AdminUserController {
      * @return 사용자 정보
      */
     @GetMapping("/{id}")
-    public ResponseEntity<UserSummaryResponse> getUser(@PathVariable Long id) {
+    public ResponseEntity<UserSummaryResponse> getUser(@PathVariable("id") Long id) {
         log.info("사용자 상세 조회 요청 - id: {}", id);
 
         User user = userService.getUserById(id);
@@ -169,7 +176,7 @@ public class AdminUserController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<UserSummaryResponse> updateUser(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UserUpdateRequest request) {
 
         log.info("사용자 정보 수정 요청 - id: {}", id);
@@ -191,7 +198,7 @@ public class AdminUserController {
      */
     @PatchMapping("/{id}/password")
     public ResponseEntity<Void> changePassword(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UserPasswordChangeRequest request) {
 
         log.info("사용자 비밀번호 변경 요청 - id: {}", id);
@@ -206,13 +213,16 @@ public class AdminUserController {
      * 
      * 어드민이 사용자의 활성화 상태를 변경할 때 사용하는 엔드포인트입니다.
      * 
+     * 실제 삭제 대신 비활성화용으로 사용할 수 있습니다.
+     * 사용자를 완전히 삭제하려면 DELETE /api/admin/users/{id} 엔드포인트를 사용하세요.
+     * 
      * @param id 사용자 ID
      * @param request 상태 변경 요청 DTO
      * @return 변경된 사용자 정보
      */
     @PatchMapping("/{id}/status")
     public ResponseEntity<UserSummaryResponse> updateStatus(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UserStatusUpdateRequest request) {
 
         log.info("사용자 상태 변경 요청 - id: {}, enabled: {}", id, request.getEnabled());
@@ -221,6 +231,30 @@ public class AdminUserController {
         UserSummaryResponse response = toUserSummaryResponse(user);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 사용자 삭제
+     * 
+     * 어드민이 사용자를 물리적으로 삭제할 때 사용하는 엔드포인트입니다.
+     * 
+     * 주의:
+     * - ADMIN 계정(id=1, username="admin")은 삭제할 수 없습니다.
+     * - 삭제 시도 시 400 Bad Request를 반환합니다.
+     * - 실제 삭제 대신 비활성화를 원한다면 PATCH /api/admin/users/{id}/status를 사용하세요.
+     * 
+     * @param id 삭제할 사용자 ID
+     * @return 204 No Content (성공 시)
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우 (404)
+     * @throws IllegalArgumentException ADMIN 계정 삭제 시도 시 (400)
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
+        log.info("사용자 삭제 요청 - id: {}", id);
+
+        userService.deleteUser(id);
+
+        return ResponseEntity.noContent().build();
     }
 
     /**

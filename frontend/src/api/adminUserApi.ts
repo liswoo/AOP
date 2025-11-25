@@ -9,7 +9,7 @@
  */
 
 import apiClient from './client';
-import { Page, UserSummary, UserCreateRequest } from '../types';
+import { Page, UserSummary, UserCreateRequest, UserUpdateRequest } from '../types';
 
 /**
  * 사용자 목록 조회 (페이지네이션 및 검색 지원)
@@ -66,6 +66,72 @@ export const getUsers = async (
 export const createUser = async (userData: UserCreateRequest): Promise<UserSummary> => {
   const response = await apiClient.post<UserSummary>('/admin/users', userData);
   return response.data;
+};
+
+/**
+ * 사용자 정보 수정
+ * 
+ * PUT /api/admin/users/{id} API를 호출하여 사용자 정보를 수정합니다.
+ * 
+ * @param id 수정할 사용자 ID
+ * @param payload 수정할 사용자 정보 (email, name, role, enabled 중 선택)
+ * @returns 수정된 사용자 정보
+ * 
+ * 사용 예시:
+ * const updatedUser = await updateUser(1, {
+ *   email: 'new@example.com',
+ *   name: '새 이름',
+ *   role: 'ADMIN',
+ *   enabled: true
+ * });
+ */
+export const updateUser = async (
+  id: number,
+  payload: UserUpdateRequest
+): Promise<UserSummary> => {
+  const response = await apiClient.put<UserSummary>(`/admin/users/${id}`, payload);
+  return response.data;
+};
+
+/**
+ * 사용자 활성/비활성 상태 변경
+ * 
+ * PATCH /api/admin/users/{id}/status API를 호출하여 사용자의 활성화 상태를 변경합니다.
+ * 
+ * @param id 상태를 변경할 사용자 ID
+ * @param enabled 활성화 여부 (true: 활성화, false: 비활성화)
+ * @returns 변경된 사용자 정보
+ * 
+ * 사용 예시:
+ * const user = await updateUserStatus(1, false); // 사용자 비활성화
+ */
+export const updateUserStatus = async (
+  id: number,
+  enabled: boolean
+): Promise<UserSummary> => {
+  const response = await apiClient.patch<UserSummary>(`/admin/users/${id}/status`, {
+    enabled,
+  });
+  return response.data;
+};
+
+/**
+ * 사용자 삭제
+ * 
+ * DELETE /api/admin/users/{id} API를 호출하여 사용자를 물리적으로 삭제합니다.
+ * 
+ * 주의:
+ * - ADMIN 계정(id=1)은 삭제할 수 없습니다.
+ * - 삭제는 되돌릴 수 없으므로 주의하세요.
+ * 
+ * @param id 삭제할 사용자 ID
+ * @returns Promise<void> (성공 시 204 No Content)
+ * 
+ * 사용 예시:
+ * await deleteUser(2); // ID가 2인 사용자 삭제
+ */
+export const deleteUser = async (id: number): Promise<void> => {
+  await apiClient.delete(`/admin/users/${id}`);
 };
 
 

@@ -324,5 +324,31 @@ public class UserService {
         
         return userRepository.save(user);
     }
+
+    /**
+     * 사용자 삭제 (어드민용)
+     * 
+     * 어드민이 사용자를 물리적으로 삭제할 때 사용하는 메서드입니다.
+     * 
+     * 주의:
+     * - ADMIN 계정(id=1, username="admin")은 삭제할 수 없습니다.
+     * - 실제 삭제 대신 비활성화를 원한다면 updateStatus 메서드를 사용하세요.
+     * 
+     * @param id 삭제할 사용자 ID
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우 (404)
+     * @throws IllegalArgumentException ADMIN 계정 삭제 시도 시 (400)
+     */
+    @Transactional
+    public void deleteUser(Long id) {
+        User user = getUserById(id);
+        
+        // ADMIN 계정(id=1, username="admin") 삭제 방지
+        if (user.getId() == 1L && "admin".equals(user.getUsername())) {
+            throw new IllegalArgumentException("ADMIN 계정은 삭제할 수 없습니다.");
+        }
+        
+        // 사용자 삭제
+        userRepository.delete(user);
+    }
 }
 
