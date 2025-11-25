@@ -2,6 +2,7 @@ package com.example.app.domain.user;
 
 import com.example.app.api.admin.dto.UserCreateRequest;
 import com.example.app.api.admin.dto.UserUpdateRequest;
+import com.example.app.domain.user.exception.DuplicateUsernameException;
 import com.example.app.domain.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -196,13 +197,15 @@ public class UserService {
      * 
      * @param request 사용자 생성 요청 DTO
      * @return 생성된 사용자
-     * @throws IllegalArgumentException username 중복 또는 이메일 중복 시
+     * @throws DuplicateUsernameException username 중복 시
+     * @throws IllegalArgumentException 이메일 중복 또는 잘못된 역할인 경우
      */
     @Transactional
     public User createUser(UserCreateRequest request) {
         // username 중복 체크
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("이미 존재하는 사용자명입니다: " + request.getUsername());
+            throw new DuplicateUsernameException(request.getUsername(), 
+                    "이미 존재하는 사용자명입니다: " + request.getUsername());
         }
 
         // 이메일 중복 체크
@@ -239,11 +242,16 @@ public class UserService {
      * 어드민이 사용자 정보를 수정할 때 사용하는 메서드입니다.
      * 비밀번호는 이 메서드에서 변경하지 않습니다.
      * 
+     * 정책:
+     * - 마지막 ADMIN 보호: 시스템에 ADMIN 역할을 가진 활성 사용자가 1명뿐인데,
+     *   그 사용자의 역할을 USER로 낮추려고 하면 400 Bad Request를 반환합니다.
+     *   이는 시스템에 관리자가 없어지는 것을 방지하기 위한 정책입니다.
+     * 
      * @param id 사용자 ID
      * @param request 사용자 수정 요청 DTO
      * @return 수정된 사용자
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
-     * @throws IllegalArgumentException 이메일 중복 또는 잘못된 역할인 경우
+     * @throws IllegalArgumentException 이메일 중복, 잘못된 역할, 마지막 ADMIN 보호 위반 시
      */
     @Transactional
     public User updateUser(Long id, UserUpdateRequest request) {
@@ -270,13 +278,53 @@ public class UserService {
             Role role = roleRepository.findByCode(roleCode)
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 역할입니다: " + request.getRole()));
             
+            // 마지막 ADMIN 보호 정책
+            // 현재 사용자가 ADMIN 역할을 가지고 있고, 새 역할이 USER인 경우
+            boolean isCurrentUserAdmin = user.getRoles().stream()
+                    .anyMatch(r -> r.getCode().equals("ROLE_ADMIN"));
+            boolean isNewRoleUser = role.getCode().equals("ROLE_USER");
+            
+            if (isCurrentUserAdmin && isNewRoleUser) {
+                // 시스템에 ADMIN 역할을 가진 활성 사용자가 몇 명인지 확인
+                long adminCount = userRepository.countActiveAdminUsers();
+                
+                // 현재 사용자를 제외하고 카운트해야 하므로,
+                // 현재 사용자가 활성 상태이고 ADMIN 역할을 가지고 있다면 카운트에 포함됨
+                // 따라서 adminCount가 1이면 현재 사용자가 유일한 ADMIN이므로 역할 변경을 막아야 함
+                if (adminCount <= 1) {
+                    throw new IllegalArgumentException(
+                            "마지막 남은 관리자 계정의 역할을 변경할 수 없습니다. " +
+                            "시스템에 최소 1명의 관리자가 필요합니다.");
+                }
+            }
+            
             // 기존 역할 제거 후 새 역할 할당
             user.getRoles().clear();
             user.addRole(role);
         }
 
         // 활성화 상태 수정 (제공된 경우만)
-        if (request.getEnabled() != null) {
+        // 마지막 ADMIN 보호: 마지막 남은 ADMIN을 비활성화하려고 하면 막아야 함
+        if (request.getEnabled() != null && !request.getEnabled()) {
+            // 현재 사용자가 ADMIN 역할을 가지고 있고, 비활성화하려는 경우
+            boolean isCurrentUserAdmin = user.getRoles().stream()
+                    .anyMatch(r -> r.getCode().equals("ROLE_ADMIN"));
+            
+            if (isCurrentUserAdmin) {
+                // 시스템에 ADMIN 역할을 가진 활성 사용자가 몇 명인지 확인
+                long adminCount = userRepository.countActiveAdminUsers();
+                
+                // adminCount가 1이면 현재 사용자가 유일한 ADMIN이므로 비활성화를 막아야 함
+                if (adminCount <= 1) {
+                    throw new IllegalArgumentException(
+                            "마지막 남은 관리자 계정을 비활성화할 수 없습니다. " +
+                            "시스템에 최소 1명의 활성 관리자가 필요합니다.");
+                }
+            }
+            
+            user.updateActive(request.getEnabled());
+        } else if (request.getEnabled() != null && request.getEnabled()) {
+            // 활성화는 항상 허용
             user.updateActive(request.getEnabled());
         }
         
@@ -330,24 +378,48 @@ public class UserService {
      * 
      * 어드민이 사용자를 물리적으로 삭제할 때 사용하는 메서드입니다.
      * 
-     * 주의:
-     * - ADMIN 계정(id=1, username="admin")은 삭제할 수 없습니다.
-     * - 실제 삭제 대신 비활성화를 원한다면 updateStatus 메서드를 사용하세요.
+     * 정책:
+     * 1. 기본 관리자 계정 보호: id=1이거나 username이 "admin"인 계정은 삭제할 수 없습니다.
+     * 2. 자기 자신 삭제 방지: 현재 로그인한 사용자가 자기 자신의 계정을 삭제하려고 하면 허용하지 않습니다.
+     * 3. 마지막 ADMIN 보호: 시스템에 ADMIN 역할을 가진 활성 사용자가 1명뿐인데,
+     *    그 사용자를 삭제하려고 하면 400 Bad Request를 반환합니다.
      * 
      * @param id 삭제할 사용자 ID
+     * @param currentUsername 현재 로그인한 사용자명 (자기 자신 삭제 방지용)
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우 (404)
-     * @throws IllegalArgumentException ADMIN 계정 삭제 시도 시 (400)
+     * @throws IllegalArgumentException 기본 관리자 계정 삭제, 자기 자신 삭제, 마지막 ADMIN 삭제 시도 시 (400)
      */
     @Transactional
-    public void deleteUser(Long id) {
+    public void deleteUser(Long id, String currentUsername) {
         User user = getUserById(id);
         
-        // ADMIN 계정(id=1, username="admin") 삭제 방지
-        if (user.getId() == 1L && "admin".equals(user.getUsername())) {
-            throw new IllegalArgumentException("ADMIN 계정은 삭제할 수 없습니다.");
+        // 1. 기본 관리자 계정 보호: id=1이거나 username이 "admin"인 계정은 삭제 불가
+        if (user.getId() == 1L || "admin".equals(user.getUsername())) {
+            throw new IllegalArgumentException("기본 관리자 계정은 삭제할 수 없습니다.");
         }
         
-        // 사용자 삭제
+        // 2. 자기 자신 삭제 방지: 현재 로그인한 사용자가 자기 자신을 삭제하려고 하면 막음
+        if (user.getUsername().equals(currentUsername)) {
+            throw new IllegalArgumentException("자기 자신은 삭제할 수 없습니다.");
+        }
+        
+        // 3. 마지막 ADMIN 보호: 마지막 남은 ADMIN을 삭제하려고 하면 막음
+        boolean isCurrentUserAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getCode().equals("ROLE_ADMIN"));
+        
+        if (isCurrentUserAdmin) {
+            // 시스템에 ADMIN 역할을 가진 활성 사용자가 몇 명인지 확인
+            long adminCount = userRepository.countActiveAdminUsers();
+            
+            // adminCount가 1이면 현재 사용자가 유일한 ADMIN이므로 삭제를 막아야 함
+            if (adminCount <= 1) {
+                throw new IllegalArgumentException(
+                        "마지막 남은 관리자 계정은 삭제할 수 없습니다. " +
+                        "시스템에 최소 1명의 관리자가 필요합니다.");
+            }
+        }
+        
+        // 모든 검증을 통과하면 사용자 삭제
         userRepository.delete(user);
     }
 

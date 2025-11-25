@@ -12,6 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -170,6 +172,11 @@ public class AdminUserController {
      * 어드민이 사용자 정보를 수정할 때 사용하는 엔드포인트입니다.
      * 비밀번호는 이 엔드포인트에서 변경하지 않습니다.
      * 
+     * 정책:
+     * - 마지막 ADMIN 보호: 시스템에 ADMIN 역할을 가진 활성 사용자가 1명뿐인데,
+     *   그 사용자의 역할을 USER로 낮추려고 하면 400 Bad Request를 반환합니다.
+     * - 마지막 ADMIN 비활성화 방지: 마지막 남은 ADMIN을 비활성화하려고 하면 400 Bad Request를 반환합니다.
+     * 
      * @param id 사용자 ID
      * @param request 사용자 수정 요청 DTO
      * @return 수정된 사용자 정보
@@ -213,6 +220,10 @@ public class AdminUserController {
      * 
      * 어드민이 사용자의 활성화 상태를 변경할 때 사용하는 엔드포인트입니다.
      * 
+     * 정책:
+     * - 마지막 ADMIN 보호: 마지막 남은 ADMIN을 비활성화하려고 하면 400 Bad Request를 반환합니다.
+     *   시스템에 최소 1명의 활성 관리자가 필요합니다.
+     * 
      * 실제 삭제 대신 비활성화용으로 사용할 수 있습니다.
      * 사용자를 완전히 삭제하려면 DELETE /api/admin/users/{id} 엔드포인트를 사용하세요.
      * 
@@ -227,7 +238,10 @@ public class AdminUserController {
 
         log.info("사용자 상태 변경 요청 - id: {}, enabled: {}", id, request.getEnabled());
 
-        User user = userService.updateStatus(id, request.getEnabled());
+        // updateStatus 대신 updateUser를 사용하여 마지막 ADMIN 보호 로직을 적용
+        UserUpdateRequest updateRequest = new UserUpdateRequest();
+        updateRequest.setEnabled(request.getEnabled());
+        User user = userService.updateUser(id, updateRequest);
         UserSummaryResponse response = toUserSummaryResponse(user);
 
         return ResponseEntity.ok(response);
@@ -238,21 +252,43 @@ public class AdminUserController {
      * 
      * 어드민이 사용자를 물리적으로 삭제할 때 사용하는 엔드포인트입니다.
      * 
-     * 주의:
-     * - ADMIN 계정(id=1, username="admin")은 삭제할 수 없습니다.
-     * - 삭제 시도 시 400 Bad Request를 반환합니다.
-     * - 실제 삭제 대신 비활성화를 원한다면 PATCH /api/admin/users/{id}/status를 사용하세요.
+     * 정책:
+     * 1. 기본 관리자 계정 보호: id=1이거나 username이 "admin"인 계정은 삭제할 수 없습니다.
+     *    삭제 시도 시 400 Bad Request를 반환하고, 메시지는 "기본 관리자 계정은 삭제할 수 없습니다."를 반환합니다.
+     * 2. 자기 자신 삭제 방지: 현재 로그인한 사용자가 자기 자신의 계정을 삭제하려고 하면 허용하지 않습니다.
+     *    삭제 시도 시 400 Bad Request를 반환하고, 메시지는 "자기 자신은 삭제할 수 없습니다."를 반환합니다.
+     * 3. 마지막 ADMIN 보호: 시스템에 ADMIN 역할을 가진 활성 사용자가 1명뿐인데,
+     *    그 사용자를 삭제하려고 하면 400 Bad Request를 반환합니다.
+     * 
+     * 그 외의 경우는 실제로 delete 합니다.
+     * 
+     * 실제 삭제 대신 비활성화를 원한다면 PATCH /api/admin/users/{id}/status를 사용하세요.
      * 
      * @param id 삭제할 사용자 ID
+     * @param userDetails 현재 로그인한 사용자 정보 (Spring Security가 자동 주입)
      * @return 204 No Content (성공 시)
      * @throws UserNotFoundException 사용자를 찾을 수 없는 경우 (404)
-     * @throws IllegalArgumentException ADMIN 계정 삭제 시도 시 (400)
+     * @throws IllegalArgumentException 기본 관리자 계정 삭제, 자기 자신 삭제, 마지막 ADMIN 삭제 시도 시 (400)
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteUser(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
         log.info("사용자 삭제 요청 - id: {}", id);
 
-        userService.deleteUser(id);
+        // 현재 로그인한 사용자명 추출
+        String currentUsername = userDetails != null ? userDetails.getUsername() : null;
+        
+        if (currentUsername == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "인증되지 않은 사용자입니다.");
+        }
+
+        // UserService의 deleteUser 메서드에 currentUsername을 전달하여
+        // 기본 관리자 계정 보호, 자기 자신 삭제 방지, 마지막 ADMIN 보호 검증을 수행합니다.
+        userService.deleteUser(id, currentUsername);
 
         return ResponseEntity.noContent().build();
     }

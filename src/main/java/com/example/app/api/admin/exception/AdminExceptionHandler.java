@@ -1,5 +1,6 @@
 package com.example.app.api.admin.exception;
 
+import com.example.app.domain.user.exception.DuplicateUsernameException;
 import com.example.app.domain.user.exception.UserNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -43,9 +44,29 @@ public class AdminExceptionHandler {
     }
 
     /**
+     * 사용자명 중복 예외 처리 (400 Bad Request)
+     * 
+     * 사용자 생성 또는 수정 시 이미 존재하는 사용자명을 사용하려고 할 때 발생합니다.
+     * 
+     * @param e DuplicateUsernameException
+     * @return 400 Bad Request 응답
+     */
+    @ExceptionHandler(DuplicateUsernameException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateUsernameException(
+            DuplicateUsernameException e) {
+        log.warn("사용자명 중복: {}", e.getMessage());
+
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "DUPLICATE_USERNAME");
+        error.put("message", e.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
      * 잘못된 요청 데이터 예외 처리 (400 Bad Request)
      * 
-     * username 중복, 이메일 중복, 잘못된 역할 등
+     * 이메일 중복, 잘못된 역할, 기본 관리자 계정 보호, 자기 자신 삭제 방지, 마지막 ADMIN 보호 등
      * 
      * @param e IllegalArgumentException
      * @return 400 Bad Request 응답

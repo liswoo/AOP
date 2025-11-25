@@ -77,5 +77,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * ADMIN 역할을 가진 활성 사용자 수 조회
+     * 
+     * 마지막 ADMIN 보호 정책을 위해 사용됩니다.
+     * 시스템에 ADMIN 역할을 가진 활성 사용자가 몇 명인지 확인합니다.
+     * 
+     * @return ADMIN 역할을 가진 활성 사용자 수
+     */
+    @Query("SELECT COUNT(DISTINCT u) FROM User u " +
+           "JOIN u.roles r " +
+           "WHERE r.code = 'ROLE_ADMIN' AND u.active = true")
+    long countActiveAdminUsers();
 }
 

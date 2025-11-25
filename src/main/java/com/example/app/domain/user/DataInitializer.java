@@ -51,6 +51,9 @@ public class DataInitializer implements CommandLineRunner {
         // 2. 초기 관리자 계정 생성
         createAdminUser();
 
+        // 3. 테스트용 일반 사용자 100명 생성 (개발/테스트 환경용)
+        createTestUsers();
+
         log.info("초기 데이터 생성이 완료되었습니다.");
     }
 
@@ -136,6 +139,71 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  - 비밀번호: admin1234");
         log.info("  - 역할: ADMIN");
         log.warn("⚠️  운영 환경에서는 반드시 초기 비밀번호를 변경하세요!");
+    }
+
+    /**
+     * 테스트용 일반 사용자 100명 생성
+     * 
+     * 개발/테스트 환경에서 사용할 목적으로 일반 사용자 100명을 생성합니다.
+     * 
+     * 생성 규칙:
+     * - username: user01, user02, ..., user100
+     * - password: password1234 (모두 동일)
+     * - name: 사용자01, 사용자02, ..., 사용자100
+     * - email: user01@example.com, user02@example.com, ..., user100@example.com
+     * - role: USER
+     * - enabled: true
+     * 
+     * 이미 존재하는 사용자는 건너뜁니다.
+     */
+    private void createTestUsers() {
+        log.info("테스트용 일반 사용자 100명 생성을 시작합니다...");
+
+        int createdCount = 0;
+        int skippedCount = 0;
+
+        // 1부터 100까지 반복
+        for (int i = 1; i <= 100; i++) {
+            String username = String.format("user%02d", i); // user01, user02, ..., user100
+            String email = String.format("user%02d@example.com", i);
+            String name = String.format("사용자%02d", i);
+
+            // 이미 존재하는 사용자인지 확인
+            if (userService.findByUsername(username).isPresent()) {
+                skippedCount++;
+                continue; // 이미 존재하면 건너뜀
+            }
+
+            try {
+                // UserCreateRequest 생성
+                com.example.app.api.admin.dto.UserCreateRequest request = 
+                        new com.example.app.api.admin.dto.UserCreateRequest();
+                request.setUsername(username);
+                request.setPassword("password1234"); // 모든 사용자 동일한 비밀번호
+                request.setEmail(email);
+                request.setName(name);
+                request.setRole("USER");
+
+                // 사용자 생성
+                userService.createUser(request);
+                createdCount++;
+
+                // 10명마다 로그 출력 (너무 많은 로그 방지)
+                if (i % 10 == 0) {
+                    log.info("테스트 사용자 생성 진행 중... {}/100", i);
+                }
+            } catch (Exception e) {
+                log.warn("테스트 사용자 생성 실패 - username: {}, error: {}", username, e.getMessage());
+            }
+        }
+
+        log.info("테스트용 일반 사용자 생성 완료: 생성 {}명, 건너뜀 {}명", createdCount, skippedCount);
+        if (createdCount > 0) {
+            log.info("테스트 사용자 로그인 정보:");
+            log.info("  - 사용자명: user01 ~ user100");
+            log.info("  - 비밀번호: password1234 (모두 동일)");
+            log.info("  - 역할: USER");
+        }
     }
 }
 
