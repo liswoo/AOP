@@ -6,6 +6,7 @@
  * 라우트 구성:
  * - /login → LoginPage (로그인 페이지, 인증 불필요)
  * - /dashboard → UserDashboardPage (일반 사용자 대시보드, 인증 필요, 역할 상관 없음)
+ * - /profile → ProfilePage (내 정보 페이지, 인증 필요, 역할 상관 없음)
  * - /admin/users → AdminUserListPage (관리자 사용자 관리 페이지, ADMIN 역할 필요)
  * 
  * RequireAuth 컴포넌트:
@@ -29,6 +30,7 @@ import { RequireAuth } from '../auth/RequireAuth';
 import LoginPage from '../pages/LoginPage';
 import AdminUserListPage from '../pages/AdminUserListPage';
 import UserDashboardPage from '../pages/UserDashboardPage';
+import ProfilePage from '../pages/ProfilePage';
 
 /**
  * AppRouter 컴포넌트
@@ -60,6 +62,16 @@ const AppRouter: React.FC = () => {
             element={
               <RequireAuth>
                 <UserDashboardPage />
+              </RequireAuth>
+            }
+          />
+          
+          {/* 내 정보 페이지 (인증 필요, 역할 상관 없음) */}
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <ProfilePage />
               </RequireAuth>
             }
           />

@@ -43,14 +43,17 @@ const Header: React.FC = () => {
     <header style={styles.header}>
       <div style={styles.leftSection}>
         <h1 style={styles.logo}>EIS 대시보드</h1>
+        <Link to="/dashboard" style={styles.link}>
+          대시보드
+        </Link>
         {/* ADMIN 계정인 경우 "사용자 관리" 링크 표시 */}
         {user.role === 'ADMIN' && (
           <Link to="/admin/users" style={styles.link}>
             사용자 관리
           </Link>
         )}
-        <Link to="/dashboard" style={styles.link}>
-          대시보드
+        <Link to="/profile" style={styles.link}>
+          내 정보
         </Link>
       </div>
       <div style={styles.rightSection}>

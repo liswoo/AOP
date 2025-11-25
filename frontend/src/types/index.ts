@@ -98,3 +98,21 @@ export interface DashboardOverview {
   doughnutChart: ChartData;    // 도넛 차트 데이터 (예: 비율 표시)
 }
 
+/**
+ * 프로필 관련 타입 정의
+ * 
+ * 백엔드의 ProfileResponse와 일치하는 타입입니다.
+ */
+
+/**
+ * 프로필 정보 타입
+ * GET /api/profile과 PUT /api/profile 응답
+ */
+export interface Profile {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+  role: UserRole;
+}
+

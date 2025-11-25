@@ -350,5 +350,77 @@ public class UserService {
         // 사용자 삭제
         userRepository.delete(user);
     }
+
+    // ========== 프로필 관리 메서드 ==========
+
+    /**
+     * 내 정보 수정 (프로필용)
+     * 
+     * 로그인한 사용자가 자신의 이름과 이메일을 수정할 때 사용하는 메서드입니다.
+     * 
+     * @param username 현재 로그인한 사용자명
+     * @param name 수정할 이름
+     * @param email 수정할 이메일
+     * @return 수정된 사용자
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
+     * @throws IllegalArgumentException 이메일 중복 시
+     */
+    @Transactional
+    public User updateProfile(String username, String name, String email) {
+        // 사용자 조회
+        User user = findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다: " + username));
+
+        // 이메일 중복 체크 (다른 사용자가 이미 사용 중인지 확인)
+        Optional<User> existingUser = userRepository.findByEmail(email);
+        if (existingUser.isPresent() && !existingUser.get().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + email);
+        }
+
+        // 이름 수정
+        if (name != null && !name.trim().isEmpty()) {
+            user.updateName(name.trim());
+        }
+
+        // 이메일 수정
+        if (email != null && !email.trim().isEmpty()) {
+            user.updateEmail(email.trim());
+        }
+
+        return userRepository.save(user);
+    }
+
+    /**
+     * 비밀번호 변경 (프로필용)
+     * 
+     * 로그인한 사용자가 자신의 비밀번호를 변경할 때 사용하는 메서드입니다.
+     * 현재 비밀번호를 확인한 후 새 비밀번호로 변경합니다.
+     * 
+     * @param username 현재 로그인한 사용자명
+     * @param currentPassword 현재 비밀번호 (평문)
+     * @param newPassword 새 비밀번호 (평문, BCrypt로 암호화됨)
+     * @throws UserNotFoundException 사용자를 찾을 수 없는 경우
+     * @throws com.example.app.api.profile.exception.InvalidCurrentPasswordException 현재 비밀번호가 일치하지 않는 경우
+     */
+    @Transactional
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        // 사용자 조회
+        User user = findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다: " + username));
+
+        // 현재 비밀번호 검증
+        // PasswordEncoder.matches()를 사용하여 평문 비밀번호와 암호화된 비밀번호를 비교합니다.
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new com.example.app.api.profile.exception.InvalidCurrentPasswordException();
+        }
+
+        // 새 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(newPassword);
+
+        // 비밀번호 업데이트
+        user.updatePassword(encodedPassword);
+
+        userRepository.save(user);
+    }
 }
 
