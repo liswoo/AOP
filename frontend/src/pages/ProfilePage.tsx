@@ -17,7 +17,6 @@
 import React, { useState, useEffect } from 'react';
 import { getMyProfile, updateMyProfile, changeMyPassword } from '../api/profileApi';
 import { Profile } from '../types';
-import Header from '../components/Header';
 
 /**
  * ProfilePage 컴포넌트
@@ -202,43 +201,32 @@ const ProfilePage: React.FC = () => {
   // 로딩 중일 때 표시할 내용
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <div style={styles.container}>
-          <div style={styles.loading}>불러오는 중...</div>
-        </div>
-      </>
+      <div style={styles.container}>
+        <div style={styles.loading}>불러오는 중...</div>
+      </div>
     );
   }
 
   // 에러가 발생했을 때 표시할 내용
   if (error && !profile) {
     return (
-      <>
-        <Header />
-        <div style={styles.container}>
-          <div style={styles.error}>{error}</div>
-        </div>
-      </>
+      <div style={styles.container}>
+        <div style={styles.error}>{error}</div>
+      </div>
     );
   }
 
   // 프로필 정보가 없을 때 표시할 내용
   if (!profile) {
     return (
-      <>
-        <Header />
-        <div style={styles.container}>
-          <div style={styles.error}>프로필 정보를 불러올 수 없습니다.</div>
-        </div>
-      </>
+      <div style={styles.container}>
+        <div style={styles.error}>프로필 정보를 불러올 수 없습니다.</div>
+      </div>
     );
   }
 
   return (
-    <>
-      <Header />
-      <div style={styles.container}>
+    <div style={styles.container}>
         <h1 style={styles.pageTitle}>내 정보</h1>
 
         {/* 에러 메시지 (전역) */}
@@ -410,7 +398,6 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
-    </>
   );
 };
 

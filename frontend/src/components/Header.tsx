@@ -8,18 +8,32 @@
  */
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import ProfileDropdown from './ProfileDropdown';
+import '../styles/header.css';
+
+interface HeaderProps {
+  onToggleSidebar?: () => void; // 데스크톱 사이드바 토글 핸들러
+  onOpenMobileSidebar?: () => void; // 모바일 사이드바 열기 핸들러
+}
 
 /**
  * Header 컴포넌트
  * 
  * 상단 헤더를 렌더링합니다.
- * - 로그인한 사용자 이름 표시
- * - ADMIN 계정인 경우 "사용자 관리" 링크 표시
- * - 로그아웃 버튼
+ * - 좌측: 햄버거 아이콘 버튼 (사이드바 토글)
+ * - 중앙: 로고/타이틀 (AppLayout으로 이동하여 제거 가능)
+ * - 우측: 로그인한 사용자 이름, 로그아웃 버튼
+ * 
+ * 동작:
+ * - 데스크톱: 햄버거 버튼 클릭 시 onToggleSidebar 호출
+ * - 모바일: 햄버거 버튼 클릭 시 onOpenMobileSidebar 호출
  */
-const Header: React.FC = () => {
+const Header: React.FC<HeaderProps> = ({
+  onToggleSidebar,
+  onOpenMobileSidebar,
+}) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -39,80 +53,86 @@ const Header: React.FC = () => {
     return null;
   }
 
+  /**
+   * 햄버거 버튼 클릭 핸들러
+   * 
+   * 화면 크기에 따라 데스크톱 또는 모바일 핸들러를 호출합니다.
+   */
+  const handleMenuClick = () => {
+    // 모바일 환경 감지 (간단한 방법)
+    const isMobile = window.innerWidth < 768;
+    if (isMobile && onOpenMobileSidebar) {
+      onOpenMobileSidebar();
+    } else if (!isMobile && onToggleSidebar) {
+      onToggleSidebar();
+    }
+  };
+
   return (
     <header style={styles.header}>
       <div style={styles.leftSection}>
-        <h1 style={styles.logo}>EIS 대시보드</h1>
-        <Link to="/dashboard" style={styles.link}>
-          대시보드
-        </Link>
-        {/* ADMIN 계정인 경우 "사용자 관리" 링크 표시 */}
-        {user.role === 'ADMIN' && (
-          <Link to="/admin/users" style={styles.link}>
-            사용자 관리
-          </Link>
-        )}
-        <Link to="/profile" style={styles.link}>
-          내 정보
-        </Link>
+        {/* 햄버거 메뉴 버튼 (사이드바 토글) */}
+        <button
+          onClick={handleMenuClick}
+          style={styles.menuButton}
+          aria-label="메뉴 열기/닫기"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(139, 92, 246, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          ☰
+        </button>
       </div>
       <div style={styles.rightSection}>
-        <span style={styles.userName}>안녕하세요, {user.username}님</span>
-        <button onClick={handleLogout} style={styles.logoutButton}>
-          로그아웃
-        </button>
+        {/* 프로필 아바타 + 드롭다운 메뉴 (내 정보, 로그아웃) */}
+        <ProfileDropdown
+          username={user.username}
+          onLogout={handleLogout}
+        />
       </div>
     </header>
   );
 };
 
-// 간단한 인라인 스타일
+// 다크 테마 스타일
 const styles: { [key: string]: React.CSSProperties } = {
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '1rem 2rem',
-    backgroundColor: '#fff',
-    borderBottom: '2px solid #eee',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    backgroundColor: '#1e293b', // 다크 테마: 어두운 슬레이트 블루
+    borderBottom: '1px solid rgba(139, 92, 246, 0.2)', // 보라색 테두리
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
   },
   leftSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1.5rem',
+    gap: '1rem',
   },
-  logo: {
-    margin: 0,
+  menuButton: {
+    background: 'none',
+    border: 'none',
+    color: '#cbd5e1',
     fontSize: '1.5rem',
-    color: '#333',
-    fontWeight: '600',
+    cursor: 'pointer',
+    padding: '0.5rem',
+    borderRadius: '6px',
+    transition: 'background-color 0.2s, color 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '40px',
+    height: '40px',
   },
-  link: {
-    color: '#007bff',
-    textDecoration: 'none',
-    fontSize: '1rem',
-    padding: '0.5rem 1rem',
-    borderRadius: '4px',
-    transition: 'background-color 0.2s',
-  },
+  // 링크 hover 효과는 CSS에서 처리 (인라인 스타일로는 :hover 불가)
   rightSection: {
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
-  },
-  userName: {
-    color: '#666',
-    fontSize: '1rem',
-  },
-  logoutButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#dc3545',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '1rem',
   },
 };
 

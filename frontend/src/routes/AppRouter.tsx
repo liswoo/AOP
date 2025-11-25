@@ -27,6 +27,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthContext';
 import { RequireAuth } from '../auth/RequireAuth';
+import AppLayout from '../layout/AppLayout';
+import AdminLayout from '../layout/AdminLayout';
 import LoginPage from '../pages/LoginPage';
 import AdminUserListPage from '../pages/AdminUserListPage';
 import UserDashboardPage from '../pages/UserDashboardPage';
@@ -42,6 +44,10 @@ import ProfilePage from '../pages/ProfilePage';
  *   - BrowserRouter: 라우팅 기능 제공
  *     - Routes: 라우트 그룹
  *       - Route: 개별 라우트 정의
+ * 
+ * 레이아웃 구조:
+ * - /login: AppLayout 없이 독립적으로 렌더링
+ * - 나머지 인증 필요 페이지: AppLayout 안에서 렌더링 (헤더 + 사이드바 + 메인 컨텐츠)
  */
 const AppRouter: React.FC = () => {
   console.log('AppRouter 렌더링 시작');
@@ -53,38 +59,44 @@ const AppRouter: React.FC = () => {
           {/* 기본 경로 "/"는 "/login"으로 리다이렉트 */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           
-          {/* 로그인 페이지 (인증 불필요) */}
+          {/* 로그인 페이지 (인증 불필요, AppLayout 없이 독립적으로 렌더링) */}
           <Route path="/login" element={<LoginPage />} />
           
-          {/* 대시보드 페이지 (인증 필요, 역할 상관 없음) */}
+          {/* 일반 사용자 페이지들은 AppLayout 안에서 렌더링 (다크 테마) */}
           <Route
-            path="/dashboard"
             element={
               <RequireAuth>
-                <UserDashboardPage />
+                <AppLayout />
               </RequireAuth>
             }
-          />
-          
-          {/* 내 정보 페이지 (인증 필요, 역할 상관 없음) */}
+          >
+            {/* 대시보드 페이지 (인증 필요, 역할 상관 없음) */}
+            <Route
+              path="/dashboard"
+              element={<UserDashboardPage />}
+            />
+            
+            {/* 내 정보 페이지 (인증 필요, 역할 상관 없음) */}
+            <Route
+              path="/profile"
+              element={<ProfilePage />}
+            />
+          </Route>
+
+          {/* 관리자 페이지들은 AdminLayout 안에서 렌더링 (라이트 테마) */}
           <Route
-            path="/profile"
-            element={
-              <RequireAuth>
-                <ProfilePage />
-              </RequireAuth>
-            }
-          />
-          
-          {/* 사용자 목록 페이지 (ADMIN 역할 필요) */}
-          <Route
-            path="/admin/users"
             element={
               <RequireAuth requiredRole="ADMIN">
-                <AdminUserListPage />
+                <AdminLayout />
               </RequireAuth>
             }
-          />
+          >
+            {/* 사용자 목록 페이지 (ADMIN 역할 필요) */}
+            <Route
+              path="/admin/users"
+              element={<AdminUserListPage />}
+            />
+          </Route>
           
           {/* 정의되지 않은 경로는 "/login"으로 리다이렉트 */}
           <Route path="*" element={<Navigate to="/login" replace />} />

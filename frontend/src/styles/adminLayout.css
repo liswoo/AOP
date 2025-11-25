@@ -1,0 +1,254 @@
+/**
+ * 관리자 전용 레이아웃 스타일
+ * 
+ * AdminLayout 컴포넌트를 위한 CSS입니다.
+ * 라이트 테마로 구성되어 있습니다.
+ */
+
+/* 전체 관리자 루트 컨테이너 */
+.admin-root {
+  min-height: 100vh;
+  background-color: #f3f4f6; /* 라이트 테마: 연한 회색 배경 */
+  color: #1f2937; /* 라이트 테마: 어두운 텍스트 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 메인 레이아웃 (사이드바 + 컨텐츠) */
+.admin-body {
+  display: flex;
+  flex: 1;
+  min-height: calc(100vh - 64px); /* header 높이만큼 빼기 */
+  position: relative;
+}
+
+/* 메인 컨텐츠 영역 */
+.admin-main {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-x: hidden;
+  background-color: #ffffff; /* 라이트 테마: 흰색 배경 */
+}
+
+/* 관리자 헤더 스타일 */
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #ffffff; /* 라이트 테마: 흰색 배경 */
+  border-bottom: 1px solid #e5e7eb; /* 연한 회색 테두리 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* 얇은 그림자 */
+}
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin-menu-button {
+  background: none;
+  border: none;
+  color: #374151;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.admin-menu-button:hover {
+  background-color: #f3f4f6;
+}
+
+.admin-logo {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* 관리자 사이드바 기본 스타일 */
+.admin-sidebar {
+  transition: width 0.2s ease, transform 0.2s ease;
+  background: #f9fafb; /* 라이트 테마: 연한 회색 배경 */
+  border-right: 1px solid #e5e7eb; /* 연한 회색 테두리 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  z-index: 20;
+}
+
+/* 데스크톱 사이드바 */
+.admin-sidebar--desktop {
+  position: relative;
+}
+
+.admin-sidebar--desktop-open {
+  width: 240px;
+}
+
+.admin-sidebar--desktop-collapsed {
+  width: 64px;
+}
+
+/* 모바일 사이드바 */
+.admin-sidebar--mobile {
+  position: fixed;
+  inset: 0;
+  left: 0;
+  width: 240px;
+  transform: translateX(-100%);
+  z-index: 40;
+  height: 100vh;
+  background-color: #ffffff;
+}
+
+.admin-sidebar--mobile-open {
+  transform: translateX(0);
+}
+
+/* 모바일 오버레이 배경 */
+.admin-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  backdrop-filter: blur(2px);
+}
+
+/* 사이드바 헤더 */
+.admin-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.admin-sidebar-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.admin-sidebar-logo-icon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.admin-sidebar-close-button {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-sidebar-close-button:hover {
+  background-color: #f3f4f6;
+}
+
+/* 사이드바 네비게이션 */
+.admin-sidebar-nav {
+  flex: 1;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+/* 사이드바 메뉴 아이템 */
+.admin-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s, color 0.2s;
+  margin-bottom: 0.25rem;
+}
+
+.admin-sidebar-item:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+/* 활성 메뉴 아이템 */
+.admin-sidebar-item--active {
+  background-color: #e0e7ff; /* 연한 보라색 배경 */
+  color: #6366f1; /* 보라색 텍스트 */
+  border-left: 3px solid #6366f1;
+}
+
+.admin-sidebar-item-icon {
+  font-size: 1.25rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.admin-sidebar-item-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 데스크톱 접힌 상태에서 텍스트 숨김 */
+.admin-sidebar--desktop-collapsed .admin-sidebar-item-label {
+  display: none;
+}
+
+.admin-sidebar--desktop-collapsed .admin-sidebar-item {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .admin-main {
+    padding: 16px;
+    margin-left: 0 !important;
+  }
+
+  .admin-sidebar--desktop {
+    display: none;
+  }
+}
+
+/* 데스크톱 반응형 */
+@media (min-width: 769px) {
+  .admin-sidebar--mobile {
+    display: none;
+  }
+
+  .admin-sidebar-backdrop {
+    display: none;
+  }
+}
+

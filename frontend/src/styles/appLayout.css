@@ -1,0 +1,213 @@
+/**
+ * 전체 앱 레이아웃 스타일
+ * 
+ * AppLayout 컴포넌트를 위한 CSS입니다.
+ * 다크 테마에 맞춘 레이아웃 스타일을 제공합니다.
+ */
+
+/* 전체 앱 루트 컨테이너 */
+.app-root {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #111827 0, #020617 60%);
+  color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 메인 레이아웃 (사이드바 + 컨텐츠) */
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: calc(100vh - 64px); /* header 높이만큼 빼기 */
+  position: relative;
+}
+
+/* 메인 컨텐츠 영역 */
+.app-main {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-x: hidden;
+  transition: margin-left 0.2s ease;
+}
+
+/* 사이드바 기본 스타일 */
+.sidebar {
+  transition: width 0.2s ease, transform 0.2s ease;
+  background: #020617;
+  border-right: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  z-index: 20;
+}
+
+/* 데스크톱 사이드바 */
+.sidebar--desktop {
+  position: relative;
+}
+
+.sidebar--desktop-open {
+  width: 240px;
+}
+
+.sidebar--desktop-collapsed {
+  width: 64px;
+}
+
+/* 모바일 사이드바 */
+.sidebar--mobile {
+  position: fixed;
+  inset: 0;
+  left: 0;
+  width: 240px;
+  transform: translateX(-100%);
+  z-index: 40;
+  height: 100vh;
+}
+
+.sidebar--mobile-open {
+  transform: translateX(0);
+}
+
+/* 모바일 오버레이 배경 */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 30;
+  backdrop-filter: blur(2px);
+}
+
+/* 사이드바 헤더 (로고/타이틀 영역) */
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sidebar-logo-icon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.sidebar-close-button {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-close-button:hover {
+  background-color: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+}
+
+/* 사이드바 네비게이션 */
+.sidebar-nav {
+  flex: 1;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+/* 사이드바 메뉴 아이템 */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #cbd5e1;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s, color 0.2s;
+  margin-bottom: 0.25rem;
+  position: relative;
+}
+
+.sidebar-item:hover {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #f1f5f9;
+}
+
+/* 활성 메뉴 아이템 (현재 페이지) */
+.sidebar-item--active {
+  background-color: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+  border-left: 3px solid #8b5cf6;
+}
+
+.sidebar-item-icon {
+  font-size: 1.25rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.sidebar-item-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 데스크톱 접힌 상태에서 텍스트 숨김 */
+.sidebar--desktop-collapsed .sidebar-item-label {
+  display: none;
+}
+
+.sidebar--desktop-collapsed .sidebar-item {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .app-main {
+    padding: 16px;
+    margin-left: 0 !important;
+  }
+
+  .sidebar--desktop {
+    display: none;
+  }
+}
+
+/* 데스크톱 반응형 */
+@media (min-width: 769px) {
+  .sidebar--mobile {
+    display: none;
+  }
+
+  .sidebar-backdrop {
+    display: none;
+  }
+
+  /* 사이드바가 접혀있을 때 메인 컨텐츠 여백 조정 */
+  .app-main {
+    margin-left: 0;
+  }
+}
+

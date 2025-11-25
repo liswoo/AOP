@@ -51,7 +51,6 @@ import type { Layout } from 'react-grid-layout';
 import { getDashboardOverview, DashboardQuery } from '../api/dashboardApi';
 import { DashboardOverview } from '../types';
 import { DashboardCardId, DashboardLayoutItem, defaultDashboardLayout } from '../types/dashboard';
-import Header from '../components/Header';
 import DashboardCard from '../components/dashboard/DashboardCard';
 import AiPromptModal from '../components/dashboard/AiPromptModal';
 import 'react-grid-layout/css/styles.css';
@@ -298,74 +297,100 @@ const UserDashboardPage: React.FC = () => {
     return groupByMap[groupBy];
   };
 
-  // 라인 차트 데이터 변환 (overview가 있을 때만)
+  // 라인 차트 데이터 변환 (다크 테마 색상 적용)
   const lineChartData = overview ? {
     labels: overview.lineChart.labels,
     datasets: overview.lineChart.datasets.map((dataset) => ({
       label: dataset.label,
       data: dataset.data,
-      borderColor: 'rgb(75, 192, 192)',
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      borderColor: 'rgb(139, 92, 246)', // 다크 테마: 보라색
+      backgroundColor: 'rgba(139, 92, 246, 0.2)', // 다크 테마: 반투명 보라색
       tension: 0.1,
+      fill: true,
     })),
   } : null;
 
-  // 바 차트 데이터 변환
+  // 바 차트 데이터 변환 (다크 테마 색상 적용)
   const barChartData = overview ? {
     labels: overview.barChart.labels,
     datasets: overview.barChart.datasets.map((dataset) => ({
       label: dataset.label,
       data: dataset.data,
       backgroundColor: [
-        'rgba(255, 99, 132, 0.6)',
-        'rgba(54, 162, 235, 0.6)',
-        'rgba(255, 206, 86, 0.6)',
-        'rgba(75, 192, 192, 0.6)',
-        'rgba(153, 102, 255, 0.6)',
+        'rgba(139, 92, 246, 0.7)', // 보라색
+        'rgba(59, 130, 246, 0.7)', // 파란색
+        'rgba(99, 102, 241, 0.7)', // 인디고
+        'rgba(139, 92, 246, 0.5)', // 연한 보라색
+        'rgba(59, 130, 246, 0.5)', // 연한 파란색
       ],
       borderColor: [
-        'rgba(255, 99, 132, 1)',
-        'rgba(54, 162, 235, 1)',
-        'rgba(255, 206, 86, 1)',
-        'rgba(75, 192, 192, 1)',
-        'rgba(153, 102, 255, 1)',
+        'rgba(139, 92, 246, 1)',
+        'rgba(59, 130, 246, 1)',
+        'rgba(99, 102, 241, 1)',
+        'rgba(139, 92, 246, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
       ],
-      borderWidth: 1,
+      borderWidth: 2,
     })),
   } : null;
 
-  // 도넛 차트 데이터 변환
+  // 도넛 차트 데이터 변환 (다크 테마 색상 적용)
   const doughnutChartData = overview ? {
     labels: overview.doughnutChart.labels,
     datasets: overview.doughnutChart.datasets.map((dataset) => ({
       label: dataset.label,
       data: dataset.data,
       backgroundColor: [
-        'rgba(255, 99, 132, 0.6)',
-        'rgba(54, 162, 235, 0.6)',
-        'rgba(255, 206, 86, 0.6)',
-        'rgba(75, 192, 192, 0.6)',
+        'rgba(139, 92, 246, 0.7)', // 보라색
+        'rgba(59, 130, 246, 0.7)', // 파란색
+        'rgba(99, 102, 241, 0.7)', // 인디고
+        'rgba(168, 85, 247, 0.7)', // 밝은 보라색
       ],
       borderColor: [
-        'rgba(255, 99, 132, 1)',
-        'rgba(54, 162, 235, 1)',
-        'rgba(255, 206, 86, 1)',
-        'rgba(75, 192, 192, 1)',
+        'rgba(139, 92, 246, 1)',
+        'rgba(59, 130, 246, 1)',
+        'rgba(99, 102, 241, 1)',
+        'rgba(168, 85, 247, 1)',
       ],
-      borderWidth: 1,
+      borderWidth: 2,
     })),
   } : null;
 
-  // 공통 차트 옵션
+  // 공통 차트 옵션 (다크 테마)
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          color: '#cbd5e1', // 다크 테마: 밝은 회색 텍스트
+          font: {
+            size: 12,
+          },
+        },
       },
       title: {
         display: true,
+        color: '#f1f5f9', // 다크 테마: 밝은 텍스트
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: '#94a3b8', // 다크 테마: 회색 텍스트
+        },
+        grid: {
+          color: 'rgba(148, 163, 184, 0.1)', // 다크 테마: 연한 그리드
+        },
+      },
+      y: {
+        ticks: {
+          color: '#94a3b8', // 다크 테마: 회색 텍스트
+        },
+        grid: {
+          color: 'rgba(148, 163, 184, 0.1)', // 다크 테마: 연한 그리드
+        },
       },
     },
   };
@@ -509,35 +534,35 @@ const UserDashboardPage: React.FC = () => {
           Math.max(0, Math.min(100, qualityBase - 5 + (Math.random() * 10 - 5))), // 인건비
           Math.max(0, Math.min(100, qualityBase + 18 + (Math.random() * 10 - 5))), // 납기준수
         ],
-        borderColor: 'rgb(255, 206, 86)',
-        backgroundColor: 'rgba(255, 206, 86, 0.2)',
+        borderColor: 'rgb(139, 92, 246)', // 다크 테마: 보라색
+        backgroundColor: 'rgba(139, 92, 246, 0.2)', // 다크 테마: 반투명 보라색
         borderWidth: 2,
       }],
     };
 
-    // (3) 재고 현황 카드용 Bar 차트 데이터 (백엔드에서 받은 barChart 활용)
+    // (3) 재고 현황 카드용 Bar 차트 데이터 (백엔드에서 받은 barChart 활용, 다크 테마 색상)
     const inventoryBarData = overview.barChart ? {
       labels: overview.barChart.labels,
       datasets: overview.barChart.datasets.map((dataset) => ({
         label: dataset.label,
         data: dataset.data,
         backgroundColor: [
-          'rgba(54, 162, 235, 0.6)', // 전월재고
-          'rgba(75, 192, 192, 0.6)', // 입고
-          'rgba(255, 99, 132, 0.6)', // 출하내수
-          'rgba(255, 99, 132, 0.6)', // 출하수출
-          'rgba(255, 99, 132, 0.6)', // 기타
-          'rgba(54, 162, 235, 0.6)', // 월말재고
+          'rgba(59, 130, 246, 0.7)', // 전월재고 - 파란색
+          'rgba(139, 92, 246, 0.7)', // 입고 - 보라색
+          'rgba(239, 68, 68, 0.7)', // 출하내수 - 빨간색
+          'rgba(239, 68, 68, 0.7)', // 출하수출 - 빨간색
+          'rgba(239, 68, 68, 0.7)', // 기타 - 빨간색
+          'rgba(59, 130, 246, 0.7)', // 월말재고 - 파란색
         ],
         borderColor: [
-          'rgba(54, 162, 235, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 99, 132, 1)',
-          'rgba(255, 99, 132, 1)',
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
+          'rgba(59, 130, 246, 1)',
+          'rgba(139, 92, 246, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(59, 130, 246, 1)',
         ],
-        borderWidth: 1,
+        borderWidth: 2,
       })),
     } : null;
 
@@ -563,9 +588,9 @@ const UserDashboardPage: React.FC = () => {
           Math.round(30 * personnelMultiplier),
           Math.round(24 * personnelMultiplier),
         ],
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
+        backgroundColor: 'rgba(59, 130, 246, 0.7)', // 다크 테마: 파란색
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 2,
       }],
     };
 
@@ -576,28 +601,28 @@ const UserDashboardPage: React.FC = () => {
         label: dataset.label,
         data: dataset.data,
         backgroundColor: index === 0 
-          ? 'rgba(255, 99, 132, 0.6)' // 계획
+          ? 'rgba(239, 68, 68, 0.7)' // 계획 - 빨간색
           : index === 1
-          ? 'rgba(255, 206, 86, 0.6)' // 실적
+          ? 'rgba(251, 191, 36, 0.7)' // 실적 - 노란색
           : [
-              'rgba(75, 192, 192, 0.6)',
-              'rgba(54, 162, 235, 0.6)',
-              'rgba(153, 102, 255, 0.6)',
-              'rgba(201, 203, 207, 0.6)',
-              'rgba(255, 159, 64, 0.6)',
+              'rgba(139, 92, 246, 0.7)', // 보라색
+              'rgba(59, 130, 246, 0.7)', // 파란색
+              'rgba(99, 102, 241, 0.7)', // 인디고
+              'rgba(168, 85, 247, 0.7)', // 밝은 보라색
+              'rgba(251, 191, 36, 0.7)', // 노란색
             ],
         borderColor: index === 0
-          ? 'rgba(255, 99, 132, 1)'
+          ? 'rgba(239, 68, 68, 1)'
           : index === 1
-          ? 'rgba(255, 206, 86, 1)'
+          ? 'rgba(251, 191, 36, 1)'
           : [
-              'rgba(75, 192, 192, 1)',
-              'rgba(54, 162, 235, 1)',
-              'rgba(153, 102, 255, 1)',
-              'rgba(201, 203, 207, 1)',
-              'rgba(255, 159, 64, 1)',
+              'rgba(139, 92, 246, 1)',
+              'rgba(59, 130, 246, 1)',
+              'rgba(99, 102, 241, 1)',
+              'rgba(168, 85, 247, 1)',
+              'rgba(251, 191, 36, 1)',
             ],
-        borderWidth: 1,
+        borderWidth: 2,
       })),
     } : null;
 
@@ -638,7 +663,7 @@ const UserDashboardPage: React.FC = () => {
                       <td style={styles.tableCell}>{row.achievement.toFixed(1)}%</td>
                       <td style={{
                         ...styles.tableCell,
-                        color: row.isPositive ? '#28a745' : '#dc3545',
+                        color: row.isPositive ? '#10b981' : '#ef4444', // 다크 테마: 초록색/빨간색
                       }}>
                         {row.isPositive ? '▲' : '▼'}{Math.abs(row.growth).toFixed(1)}%
                       </td>
@@ -666,6 +691,15 @@ const UserDashboardPage: React.FC = () => {
                     r: {
                       beginAtZero: true,
                       max: 100,
+                      ticks: {
+                        color: '#94a3b8', // 다크 테마: 회색 텍스트
+                      },
+                      grid: {
+                        color: 'rgba(148, 163, 184, 0.1)', // 다크 테마: 연한 그리드
+                      },
+                      pointLabels: {
+                        color: '#cbd5e1', // 다크 테마: 밝은 회색 텍스트
+                      },
                     },
                   },
                 }} />
@@ -810,7 +844,6 @@ const UserDashboardPage: React.FC = () => {
 
   return (
     <>
-      <Header />
       <div style={styles.container}>
         <h1 style={styles.pageTitle}>
           대시보드 ({getPeriodDescription()}, {getGroupByDescription()})
@@ -941,33 +974,38 @@ const UserDashboardPage: React.FC = () => {
   );
 };
 
-// 간단한 인라인 스타일
+// 다크 테마 스타일
+// AppLayout의 app-main에서 이미 padding이 적용되므로, 여기서는 추가 padding을 최소화합니다.
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    maxWidth: '1400px',
-    margin: '0 auto',
-    padding: '2rem',
-    backgroundColor: '#f5f5f5', // 심플한 SaaS 스타일: 연한 회색 배경
-    minHeight: '100vh',
+    width: '100%',
+    // maxWidth와 margin: 0 auto 제거 (AppLayout의 app-main이 전체 폭을 사용하도록)
+    // padding은 AppLayout의 app-main에서 처리되므로 제거
   },
   pageTitle: {
     marginBottom: '2rem',
-    color: '#333',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
     fontSize: '2rem',
+    fontWeight: '700',
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
   },
   loading: {
     textAlign: 'center',
     padding: '4rem',
     fontSize: '1.2rem',
-    color: '#666',
+    color: '#94a3b8', // 다크 테마: 회색 텍스트
   },
   error: {
-    backgroundColor: '#fee',
-    color: '#c33',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    color: '#fca5a5',
     padding: '1rem',
-    borderRadius: '4px',
+    borderRadius: '8px',
     textAlign: 'center',
     marginBottom: '1rem',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
   },
   errorContainer: {
     textAlign: 'center',
@@ -975,24 +1013,28 @@ const styles: { [key: string]: React.CSSProperties } = {
   retryButton: {
     marginTop: '1rem',
     padding: '0.5rem 1.5rem',
-    backgroundColor: '#007bff',
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', // 보라색-파란색 그라데이션
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '1rem',
+    fontWeight: '600',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    boxShadow: '0 2px 8px rgba(139, 92, 246, 0.4)',
   },
-  // 필터 바 스타일
+  // 필터 바 스타일 (다크 테마)
   filterBar: {
-    backgroundColor: 'white',
+    backgroundColor: '#1e293b', // 다크 테마: 어두운 슬레이트 블루
     padding: '1.5rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    borderRadius: '12px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     marginBottom: '2rem',
     display: 'flex',
     flexWrap: 'wrap',
     gap: '1.5rem',
     alignItems: 'flex-start',
+    border: '1px solid rgba(139, 92, 246, 0.2)',
   },
   filterGroup: {
     display: 'flex',
@@ -1002,7 +1044,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   filterLabel: {
     fontSize: '0.9rem',
     fontWeight: '600',
-    color: '#333',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
   },
   periodOptions: {
     display: 'flex',
@@ -1015,6 +1057,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '0.5rem',
     fontSize: '0.9rem',
     cursor: 'pointer',
+    color: '#cbd5e1', // 다크 테마: 밝은 회색 텍스트
   },
   dateInputs: {
     display: 'flex',
@@ -1023,40 +1066,48 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   dateInput: {
     padding: '0.5rem',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
+    border: '1px solid rgba(148, 163, 184, 0.3)',
+    borderRadius: '6px',
     fontSize: '0.9rem',
+    backgroundColor: '#0f172a', // 다크 테마: 어두운 배경
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
   },
   dateSeparator: {
-    color: '#666',
+    color: '#94a3b8',
   },
   searchButton: {
     padding: '0.5rem 1rem',
-    backgroundColor: '#007bff',
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', // 보라색-파란색 그라데이션
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '0.9rem',
+    fontWeight: '600',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    boxShadow: '0 2px 8px rgba(139, 92, 246, 0.4)',
   },
   select: {
     padding: '0.5rem',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
+    border: '1px solid rgba(148, 163, 184, 0.3)',
+    borderRadius: '6px',
     fontSize: '0.9rem',
     minWidth: '150px',
+    backgroundColor: '#0f172a', // 다크 테마: 어두운 배경
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
   },
   loadingOverlay: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)', // 다크 테마: 반투명 어두운 배경
     padding: '2rem',
-    borderRadius: '8px',
+    borderRadius: '12px',
     textAlign: 'center',
     marginBottom: '1rem',
+    border: '1px solid rgba(139, 92, 246, 0.2)',
   },
   // 카드 그리드 스타일은 react-grid-layout이 자동으로 관리합니다.
   // cardGrid 스타일 제거됨
   // 차트 래퍼 스타일은 chart-container 클래스로 대체됨 (react-grid-layout과 Chart.js 높이를 맞추기 위한 처리)
-  // 주요 손익 테이블 스타일
+  // 주요 손익 테이블 스타일 (다크 테마)
   profitTable: {
     width: '100%',
     borderCollapse: 'collapse',
@@ -1065,23 +1116,23 @@ const styles: { [key: string]: React.CSSProperties } = {
   tableHeader: {
     padding: '8px',
     textAlign: 'left',
-    borderBottom: '2px solid #f0f0f0',
+    borderBottom: '2px solid rgba(148, 163, 184, 0.2)',
     fontWeight: '600',
-    color: '#333',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
     fontSize: '0.85rem',
   },
   tableCell: {
     padding: '8px',
-    borderBottom: '1px solid #f0f0f0',
-    color: '#666',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+    color: '#cbd5e1', // 다크 테마: 밝은 회색 텍스트
   },
-  // 인원 현황 요약 스타일
+  // 인원 현황 요약 스타일 (다크 테마)
   personnelSummary: {
     display: 'flex',
     gap: '1.5rem',
     marginBottom: '1rem',
     paddingBottom: '1rem',
-    borderBottom: '1px solid #f0f0f0',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
   },
   personnelItem: {
     display: 'flex',
@@ -1090,12 +1141,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   personnelLabel: {
     fontSize: '0.85rem',
-    color: '#666',
+    color: '#94a3b8', // 다크 테마: 회색 텍스트
   },
   personnelValue: {
     fontSize: '1.2rem',
     fontWeight: '600',
-    color: '#333',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
   },
 };
 

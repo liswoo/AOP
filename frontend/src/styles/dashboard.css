@@ -14,11 +14,12 @@
   transition: all 200ms ease;
 }
 
-/* 드래그 중인 아이템의 플레이스홀더 스타일 */
+/* 드래그 중인 아이템의 플레이스홀더 스타일 (다크 테마) */
 .react-grid-item.react-grid-placeholder {
-  background: rgba(0, 123, 255, 0.15);
-  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.2); /* 보라색 플레이스홀더 */
+  border-radius: 12px;
   opacity: 0.5;
+  border: 2px dashed rgba(139, 92, 246, 0.5);
 }
 
 /* 드래그 중인 아이템 스타일 */
@@ -36,9 +37,11 @@
   cursor: move;
 }
 
-/* 드래그 중일 때 카드 그림자 강조 */
+/* 드래그 중일 때 카드 그림자 강조 (다크 테마) */
 .react-grid-item.react-draggable-dragging .dashboard-card {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4) !important; /* 보라색 그림자 */
+  transform: scale(1.02);
+  border: '1px solid rgba(139, 92, 246, 0.5)';
 }
 
 /* DashboardCard 본문 영역 (react-grid-layout과 Chart.js 높이를 맞추기 위한 처리) */

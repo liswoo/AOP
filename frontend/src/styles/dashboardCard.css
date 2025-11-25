@@ -1,0 +1,10 @@
+/**
+ * DashboardCard 다크 테마 스타일
+ */
+
+/* 아이콘 버튼 hover 효과 */
+.dashboard-card .dashboard-card-drag-handle button:hover {
+  color: #8b5cf6; /* 보라색 */
+  transform: scale(1.1);
+}
+

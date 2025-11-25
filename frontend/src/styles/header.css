@@ -1,0 +1,16 @@
+/**
+ * 헤더 다크 테마 스타일
+ */
+
+/* 링크 hover 효과 */
+header a:hover {
+  background-color: rgba(139, 92, 246, 0.2); /* 보라색 배경 */
+  color: #f1f5f9;
+}
+
+/* 로그아웃 버튼 hover 효과 */
+header button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+}
+

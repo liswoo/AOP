@@ -22,6 +22,7 @@
  */
 
 import React, { useState } from 'react';
+import '../../styles/dashboardCard.css';
 
 interface DashboardCardProps {
   title: string;
@@ -55,7 +56,12 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
       style={{
         ...styles.card,
         ...style, // react-grid-layout과 Chart.js 높이를 맞추기 위한 처리
-        boxShadow: isHovered ? '0 4px 12px rgba(0, 0, 0, 0.1)' : '0 2px 6px rgba(0, 0, 0, 0.06)',
+        boxShadow: isHovered 
+          ? '0 8px 24px rgba(139, 92, 246, 0.3)' // 다크 테마: 보라색 그림자
+          : '0 4px 12px rgba(0, 0, 0, 0.3)',
+        border: isHovered 
+          ? '1px solid rgba(139, 92, 246, 0.4)' // 다크 테마: hover 시 보라색 테두리 강조
+          : '1px solid rgba(139, 92, 246, 0.2)',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -120,14 +126,15 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
 
 const styles: { [key: string]: React.CSSProperties } = {
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: '8px',
-    padding: '16px',
-    transition: 'box-shadow 0.2s ease',
+    backgroundColor: '#1e293b', // 다크 테마: 어두운 슬레이트 블루
+    borderRadius: '12px',
+    padding: '20px',
+    transition: 'box-shadow 0.2s ease, transform 0.2s ease',
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    border: '1px solid rgba(139, 92, 246, 0.2)', // 보라색 테두리
   },
   header: {
     display: 'flex',
@@ -135,7 +142,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'flex-start',
     marginBottom: '16px',
     paddingBottom: '12px',
-    borderBottom: '1px solid #f0f0f0',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.2)', // 다크 테마용 경계선
   },
   headerLeft: {
     display: 'flex',
@@ -144,11 +151,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     flex: 1,
   },
   categoryBadge: {
-    backgroundColor: '#f5f5f5',
-    color: '#666',
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', // 보라색-파란색 그라데이션
+    color: '#ffffff',
     fontSize: '0.75rem',
     padding: '4px 8px',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontWeight: '600',
     minWidth: '24px',
     textAlign: 'center',
@@ -162,11 +169,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     fontSize: '1.1rem',
     fontWeight: '600',
-    color: '#333',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
   },
   subtitle: {
     fontSize: '0.85rem',
-    color: '#666',
+    color: '#94a3b8', // 다크 테마: 회색 텍스트
   },
   headerRight: {
     display: 'flex',
@@ -179,8 +186,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '1.2rem',
     cursor: 'pointer',
     padding: '4px 8px',
-    color: '#999',
-    transition: 'color 0.2s ease',
+    color: '#94a3b8',
+    transition: 'color 0.2s ease, transform 0.2s ease',
   },
   body: {
     flex: 1,
@@ -189,9 +196,9 @@ const styles: { [key: string]: React.CSSProperties } = {
   footer: {
     marginTop: '12px',
     paddingTop: '12px',
-    borderTop: '1px solid #f0f0f0',
+    borderTop: '1px solid rgba(148, 163, 184, 0.2)',
     fontSize: '0.8rem',
-    color: '#999',
+    color: '#64748b',
     textAlign: 'right',
   },
 };

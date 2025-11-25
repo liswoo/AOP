@@ -255,7 +255,7 @@ const AdminUserListPage: React.FC = () => {
               onMessageChange={setMessage}
             />
             
-            {/* 페이지네이션 (sticky로 고정하여 스크롤 위치에 상관없이 항상 보이도록) */}
+            {/* 페이지네이션 (테이블 바로 아래에 자연스럽게 위치) */}
             <div ref={paginationRef} style={styles.pagination}>
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -293,10 +293,11 @@ const AdminUserListPage: React.FC = () => {
   );
 };
 
-// 간단한 인라인 스타일
+// 라이트 테마 스타일 (AdminLayout과 일치)
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    maxWidth: '1200px',
+    width: '100%',
+    // maxWidth와 margin: 0 auto 제거 (AdminLayout의 admin-main이 전체 폭을 사용하도록)
     margin: '0 auto',
     padding: '2rem',
   },
@@ -407,12 +408,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: '1.5rem',
     marginBottom: '2rem',
     padding: '1rem',
-    // 스크롤 위치에 상관없이 항상 보이도록 sticky 위치 설정
-    // 화면 하단에서 1rem 위에 고정되어 스크롤해도 항상 보임
-    position: 'sticky',
-    bottom: '1rem',
+    // 플로팅하지 않고 기본 흐름에 따라 테이블 바로 아래에 위치
+    position: 'static',
     backgroundColor: 'white',
-    zIndex: 10,
     borderRadius: '8px',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
     border: '1px solid #e0e0e0',
