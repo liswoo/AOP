@@ -30,7 +30,7 @@
  * TODO: 카드 레이아웃을 localStorage 등에 저장하여, 새로고침 후에도 사용자 맞춤 레이아웃 유지
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
 import {
@@ -45,6 +45,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler, // Line 차트의 fill 옵션을 사용하기 위한 플러그인
 } from 'chart.js';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import type { Layout } from 'react-grid-layout';
@@ -68,12 +69,105 @@ ChartJS.register(
   RadialLinearScale, // Radar 차트용
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler // Line 차트의 fill 옵션을 사용하기 위한 플러그인
 );
 
 // react-grid-layout의 Responsive 컴포넌트를 WidthProvider로 래핑
 // WidthProvider는 컨테이너의 너비를 자동으로 감지하여 Responsive 컴포넌트에 전달합니다.
 const ResponsiveGridLayout = WidthProvider(Responsive);
+
+/**
+ * 행 높이 상수 (그리드 단위)
+ * 
+ * react-grid-layout의 rowHeight와 일치시켜야 합니다.
+ */
+const ROW_HEIGHT = 6;
+
+/**
+ * 활성화된 대시보드 카드 목록을 받아서
+ * 카드 개수에 따라 1~3열 프리셋 레이아웃을 계산하는 함수입니다.
+ * 
+ * 규칙:
+ * - 1개: 1열(풀폭)
+ * - 2개: 2열
+ * - 3개: 3열
+ * - 4개: 2열 × 2행
+ * - 5개 이상: 3열(최대 6개)
+ * 
+ * 이렇게 정해진 규칙으로만 레이아웃을 자동 재배치하여
+ * 화면 공간을 효율적으로 쓰면서도
+ * 사용자가 레이아웃 변화를 예측할 수 있게 만듭니다.
+ */
+function computeLayout(activeCards: DashboardCardId[]): Layout[] {
+  const n = activeCards.length;
+
+  // 카드 개수에 따라 컬럼 수 결정
+  const colCount =
+    n <= 1 ? 1 :
+    n === 2 ? 2 :
+    n === 3 ? 3 :
+    n === 4 ? 2 :
+    3; // 5~6개는 3열
+
+  // 각 카드의 너비 (12열 그리드 기준)
+  const w = 12 / colCount;
+  // 각 카드의 높이 (공통 값)
+  const h = ROW_HEIGHT;
+
+  // 각 카드의 위치 계산
+  return activeCards.map((id, index) => {
+    const row = Math.floor(index / colCount);
+    const col = index % colCount;
+
+    return {
+      i: id,
+      x: col * w,
+      y: row * h,
+      w,
+      h,
+    };
+  });
+}
+
+/**
+ * 카드 ID를 한글 제목으로 변환하는 유틸 함수
+ */
+/**
+ * 카드 제목 반환
+ */
+function getCardTitle(id: DashboardCardId): string {
+  switch (id) {
+    case 'profit': return '주요 손익';
+    case 'quality': return '품질 현황';
+    case 'stock': return '재고 현황';
+    case 'trend': return '매출 Trend';
+    case 'people': return '인원 현황';
+    case 'downtime': return '비가동 실적';
+  }
+}
+
+/**
+ * 카드 부제목 반환
+ */
+function getCardSubtitle(id: DashboardCardId): string | undefined {
+  switch (id) {
+    case 'profit': return '단위: 억원, %';
+    case 'quality': return '단위: Point';
+    case 'stock': return '단위: MT';
+    case 'trend': return '단위: 억원, %';
+    case 'people': return '단위: 명, %';
+    case 'downtime': return '단위: 백만원';
+    default: return undefined;
+  }
+}
+
+/**
+ * 카드 카테고리 반환
+ */
+function getCardCategory(id: DashboardCardId): string {
+  return 'M'; // 모든 카드가 'M' 카테고리
+}
 
 /**
  * UserDashboardPage 컴포넌트
@@ -109,21 +203,52 @@ const UserDashboardPage: React.FC = () => {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiModalTitle, setAiModalTitle] = useState<string>('');
   
-  // 대시보드 레이아웃 상태 관리
-  // react-grid-layout에서 레이아웃이 변경될 때마다 이 상태가 업데이트됩니다.
-  const [layout, setLayout] = useState<DashboardLayoutItem[]>(defaultDashboardLayout);
+  // 대시보드 카드 상태 관리
+  // activeCards: 현재 대시보드 그리드에 표시되는 카드들 (순서 포함)
+  // dockedCards: 상단 탭 영역으로 빼 놓은 카드들
+  const [activeCards, setActiveCards] = useState<DashboardCardId[]>([
+    'profit',
+    'quality',
+    'stock',
+    'trend',
+    'people',
+    'downtime',
+  ]);
+  const [dockedCards, setDockedCards] = useState<DashboardCardId[]>([]);
 
-  /**
-   * 기본 레이아웃 맵
-   * 
-   * 각 카드의 기본 크기(w, h)를 보존하기 위해 사용합니다.
-   * handleLayoutChange에서 위치(x, y)만 변경하고 크기는 기본값을 유지하기 위함입니다.
-   */
-  const baseLayoutMap = useMemo(() => {
-    const m = new Map<string, DashboardLayoutItem>();
-    defaultDashboardLayout.forEach(item => m.set(item.i, item));
-    return m;
-  }, []);
+  // 확대된 카드 ID 관리 (null이면 확대 상태 아님)
+  const [expandedCardId, setExpandedCardId] = useState<DashboardCardId | null>(null);
+  
+  // 확대된 카드 콘텐츠 렌더링 함수를 저장할 ref
+  const renderExpandedCardContentRef = useRef<((cardId: DashboardCardId) => React.ReactNode) | null>(null);
+
+  // 드래그 상태 관리
+  const [dragStartY, setDragStartY] = useState<number | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  // 드래그 중 도킹 바 하이라이트 여부
+  const [isDockTargetActive, setIsDockTargetActive] = useState(false);
+  // 전역 마우스 위치 추적용 ref
+  const currentMouseYRef = useRef<number | null>(null);
+
+  // 도킹 바 DOM을 참조하기 위한 ref
+  const dockBarRef = useRef<HTMLDivElement | null>(null);
+
+  // ESC 키로 확대 카드 닫기
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && expandedCardId) {
+        setExpandedCardId(null);
+      }
+    };
+
+    if (expandedCardId) {
+      window.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [expandedCardId]);
 
   /**
    * URL 쿼리 파라미터에서 필터 값 초기화
@@ -405,42 +530,48 @@ const UserDashboardPage: React.FC = () => {
   };
 
   /**
-   * 레이아웃 변경 핸들러
+   * 활성 카드 목록을 기반으로 레이아웃 계산
    * 
-   * react-grid-layout에서 카드 위치를 바꿀 때 호출되는 콜백입니다.
-   * 여기서는 카드 크기(w,h)는 기본 레이아웃 값을 유지하고,
-   * 위치(x,y)만 변경되도록 강제하여
-   * 6개 카드가 항상 동일한 크기를 유지하도록 합니다.
-   * 
-   * 이렇게 하면 "6개의 고정 슬롯 안에서 위치만 바꾸는" 형태의 레이아웃이 됩니다.
+   * activeCards가 변경될 때마다 자동으로 레이아웃을 재계산합니다.
    */
-  const handleLayoutChange = (next: Layout[]) => {
-    // react-grid-layout이 넘겨주는 Layout에는 x,y,w,h가 모두 들어있지만
-    // 우리는 위치(x,y)만 반영하고 크기(w,h)는 기본값으로 되돌립니다.
-    const newLayout: DashboardLayoutItem[] = next.map(item => {
-      const base = baseLayoutMap.get(item.i as DashboardCardId);
-      if (!base) {
-        // 기본 레이아웃에 없는 경우 (이론적으로 발생하지 않아야 함)
-        return {
-          i: item.i as DashboardCardId,
-          x: item.x,
-          y: item.y,
-          w: item.w,
-          h: item.h,
-        };
-      }
-      // 위치(x, y)만 업데이트하고, 크기(w, h)는 기본값 유지
-      return {
-        ...base,
-        x: item.x,
-        y: item.y,
-      };
-    });
-    setLayout(newLayout);
-    
-    // TODO: localStorage에 저장하여 새로고침 후에도 사용자 맞춤 레이아웃 유지
-    // localStorage.setItem('dashboardLayout', JSON.stringify(newLayout));
+  const layout = useMemo(
+    () => computeLayout(activeCards),
+    [activeCards]
+  );
+
+  /**
+   * 도킹 임계값 상수
+   * 
+   * - DOCKING_VERTICAL_THRESHOLD: 위로 드래그해야 하는 최소 거리(px)
+   * - DOCKING_NEAR_BAR_OFFSET: 도킹 바 하단으로부터 허용되는 드롭 범위(px)
+   */
+  const DOCKING_VERTICAL_THRESHOLD = 40; // 최소 위로 이동량(px)
+  const DOCKING_NEAR_BAR_OFFSET = 60;   // 도킹 바 아래쪽 허용 범위(px) - 1.5배 확대
+
+  /**
+   * 카드를 그리드에서 제거하고 상단 도킹 탭으로 이동
+   * 
+   * @param id 도킹할 카드 ID
+   */
+  const dockCard = (id: DashboardCardId) => {
+    setActiveCards(prev => prev.filter(cardId => cardId !== id));
+    setDockedCards(prev =>
+      prev.includes(id) ? prev : [...prev, id]
+    );
   };
+
+  /**
+   * 도킹된 카드를 다시 그리드에 복귀
+   * 
+   * @param id 언도킹할 카드 ID
+   */
+  const undockCard = (id: DashboardCardId) => {
+    setDockedCards(prev => prev.filter(cardId => cardId !== id));
+    setActiveCards(prev =>
+      prev.includes(id) ? prev : [...prev, id]
+    );
+  };
+
 
   /**
    * 현재 날짜를 기준일자 형식으로 반환
@@ -627,6 +758,131 @@ const UserDashboardPage: React.FC = () => {
     } : null;
 
     /**
+     * 확대된 카드의 콘텐츠 렌더링
+     * 
+     * 기존 renderCard와 동일한 로직이지만, 확대된 화면에 맞게 높이를 조정합니다.
+     */
+    const renderExpandedCardContent = (cardId: DashboardCardId) => {
+      switch (cardId) {
+        case 'profit':
+          return (
+            <table style={{ ...styles.profitTable, width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={styles.tableHeader}>구분</th>
+                  <th style={styles.tableHeader}>전년</th>
+                  <th style={styles.tableHeader}>당년</th>
+                  <th style={styles.tableHeader}>달성률</th>
+                  <th style={styles.tableHeader}>성장률</th>
+                </tr>
+              </thead>
+              <tbody>
+                {profitLossData.map((row, index) => (
+                  <tr key={index}>
+                    <td style={styles.tableCell}>{row.label}</td>
+                    <td style={styles.tableCell}>{row.prevYear.toLocaleString()}</td>
+                    <td style={styles.tableCell}>{row.currentYear.toLocaleString()}</td>
+                    <td style={styles.tableCell}>{row.achievement.toFixed(1)}%</td>
+                    <td style={{
+                      ...styles.tableCell,
+                      color: row.isPositive ? '#10b981' : '#ef4444',
+                    }}>
+                      {row.isPositive ? '▲' : '▼'}{Math.abs(row.growth).toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+
+        case 'quality':
+          return (
+            <div className="chart-container" style={{ height: '500px' }}>
+              <Radar data={qualityRadarData} options={{
+                ...chartOptions,
+                scales: {
+                  r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                      color: '#94a3b8',
+                    },
+                    grid: {
+                      color: 'rgba(148, 163, 184, 0.1)',
+                    },
+                    pointLabels: {
+                      color: '#cbd5e1',
+                    },
+                  },
+                },
+              }} />
+            </div>
+          );
+
+        case 'stock':
+          return inventoryBarData ? (
+            <div className="chart-container" style={{ height: '500px' }}>
+              <Bar data={inventoryBarData} options={chartOptions} />
+            </div>
+          ) : (
+            <div style={styles.loading}>데이터 로딩 중...</div>
+          );
+
+        case 'trend':
+          return salesTrendLineData ? (
+            <div className="chart-container" style={{ height: '500px' }}>
+              <Line data={salesTrendLineData} options={chartOptions} />
+            </div>
+          ) : (
+            <div style={styles.loading}>데이터 로딩 중...</div>
+          );
+
+        case 'people':
+          return (
+            <>
+              <div style={styles.personnelSummary}>
+                <div style={styles.personnelItem}>
+                  <span style={styles.personnelLabel}>총 인원:</span>
+                  <span style={styles.personnelValue}>{personnelSummary.total}명</span>
+                </div>
+                <div style={styles.personnelItem}>
+                  <span style={styles.personnelLabel}>SI:</span>
+                  <span style={styles.personnelValue}>{personnelSummary.si}명</span>
+                </div>
+                <div style={styles.personnelItem}>
+                  <span style={styles.personnelLabel}>SM:</span>
+                  <span style={styles.personnelValue}>{personnelSummary.sm}명</span>
+                </div>
+              </div>
+              <div className="chart-container" style={{ height: '400px', marginTop: '20px' }}>
+                <Bar data={personnelBarData} options={chartOptions} />
+              </div>
+            </>
+          );
+
+        case 'downtime':
+          return downtimeDoughnutData ? (
+            <div className="chart-container" style={{ height: '500px' }}>
+              <Doughnut data={downtimeDoughnutData} options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  legend: {
+                    position: 'right' as const,
+                  },
+                },
+              }} />
+            </div>
+          ) : (
+            <div style={styles.loading}>데이터 로딩 중...</div>
+          );
+
+        default:
+          return null;
+      }
+    };
+
+    /**
      * 카드 렌더링 함수
      * 
      * layout 배열을 기반으로 각 카드를 렌더링합니다.
@@ -642,6 +898,10 @@ const UserDashboardPage: React.FC = () => {
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
               onChatClick={() => handleChatClick('주요 손익')}
+              onDock={() => dockCard('profit')}
+              onToggleExpand={() => {
+                setExpandedCardId(prev => prev === 'profit' ? null : 'profit');
+              }}
               style={{ height: '100%' }}
             >
               <table style={styles.profitTable}>
@@ -682,6 +942,10 @@ const UserDashboardPage: React.FC = () => {
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
               onChatClick={() => handleChatClick('품질 현황')}
+              onDock={() => dockCard('quality')}
+              onToggleExpand={() => {
+                setExpandedCardId(prev => prev === 'quality' ? null : 'quality');
+              }}
               style={{ height: '100%' }}
             >
               <div className="chart-container">
@@ -715,6 +979,10 @@ const UserDashboardPage: React.FC = () => {
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
               onChatClick={() => handleChatClick('재고 현황')}
+              onDock={() => dockCard('stock')}
+              onToggleExpand={() => {
+                setExpandedCardId(prev => prev === 'stock' ? null : 'stock');
+              }}
               style={{ height: '100%' }}
             >
               {inventoryBarData ? (
@@ -735,6 +1003,10 @@ const UserDashboardPage: React.FC = () => {
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
               onChatClick={() => handleChatClick('매출 Trend')}
+              onDock={() => dockCard('trend')}
+              onToggleExpand={() => {
+                setExpandedCardId(prev => prev === 'trend' ? null : 'trend');
+              }}
               style={{ height: '100%' }}
             >
               {salesTrendLineData && (
@@ -753,6 +1025,10 @@ const UserDashboardPage: React.FC = () => {
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
               onChatClick={() => handleChatClick('인원 현황')}
+              onDock={() => dockCard('people')}
+              onToggleExpand={() => {
+                setExpandedCardId(prev => prev === 'people' ? null : 'people');
+              }}
               style={{ height: '100%' }}
             >
               <div style={styles.personnelSummary}>
@@ -784,6 +1060,10 @@ const UserDashboardPage: React.FC = () => {
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
               onChatClick={() => handleChatClick('비가동 실적')}
+              onDock={() => dockCard('downtime')}
+              onToggleExpand={() => {
+                setExpandedCardId(prev => prev === 'downtime' ? null : 'downtime');
+              }}
               style={{ height: '100%' }}
             >
               {downtimeDoughnutData ? (
@@ -809,6 +1089,9 @@ const UserDashboardPage: React.FC = () => {
       }
     };
 
+    // renderExpandedCardContent 함수를 ref에 저장
+    renderExpandedCardContentRef.current = renderExpandedCardContent;
+
     return (
       <>
         {/* 
@@ -819,24 +1102,205 @@ const UserDashboardPage: React.FC = () => {
           이렇게 해서 "6개의 고정 슬롯 안에서 위치만 바꾸는" 형태의 레이아웃을 구현합니다.
         */}
         <ResponsiveGridLayout
-        className="dashboard-grid"
-        layouts={{ lg: layout }}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        rowHeight={45}
-        margin={[16, 16]}
-        onLayoutChange={handleLayoutChange}
-        draggableHandle=".dashboard-card-drag-handle"
-        isDraggable={true}
-        isResizable={false}
-        compactType="vertical"
-        preventCollision={false}
-      >
-        {layout.map((item) => (
-          <div key={item.i} data-grid={item}>
-            {renderCard(item.i)}
-          </div>
-        ))}
+          className="dashboard-grid"
+          layouts={{ lg: layout }}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={45}
+          margin={[16, 16]}
+          draggableHandle=".dashboard-card-drag-handle"
+          draggableCancel=".dashboard-card-actions, .dashboard-card-body"
+          isDraggable={true}
+          isResizable={false}
+          compactType="vertical"
+          preventCollision={false}
+          onDragStart={(layout, item, e) => {
+            /**
+             * 드래그 시작 핸들러
+             * 
+             * 드래그가 시작되면:
+             * 1. 드래그 시작 위치(Y 좌표)를 저장
+             * 2. 드래그 중인 카드 ID를 저장
+             * 3. 도킹 바를 활성화하여 드롭 타겟임을 시각적으로 표시
+             */
+            console.log('onDragStart 호출됨:', item.i);
+            setDraggingItemId(item.i);
+
+            // 마우스/터치 이벤트에서 Y 좌표 추출
+            // react-grid-layout의 이벤트는 일반 마우스 이벤트와 다를 수 있음
+            let clientY: number | undefined;
+            
+            if (e) {
+              // MouseEvent인 경우
+              if ('clientY' in e) {
+                clientY = (e as MouseEvent).clientY;
+              }
+              // TouchEvent인 경우
+              else if ('touches' in e && e.touches && e.touches.length > 0) {
+                clientY = e.touches[0].clientY;
+              }
+              // 다른 형태의 이벤트인 경우
+              else if ('nativeEvent' in e) {
+                const nativeEvent = (e as any).nativeEvent;
+                if (nativeEvent && 'clientY' in nativeEvent) {
+                  clientY = nativeEvent.clientY;
+                } else if (nativeEvent && 'touches' in nativeEvent && nativeEvent.touches && nativeEvent.touches.length > 0) {
+                  clientY = nativeEvent.touches[0].clientY;
+                }
+              }
+            }
+            
+            // 이벤트에서 Y 좌표를 찾을 수 없으면 전역 마우스 위치 ref 사용
+            if (clientY === undefined) {
+              clientY = currentMouseYRef.current ?? undefined;
+            }
+            
+            // 그래도 없으면 window.event 사용 (비표준이지만 일부 브라우저에서 동작)
+            if (clientY === undefined) {
+              const globalEvent = (window.event as MouseEvent) || (e as any);
+              if (globalEvent && 'clientY' in globalEvent) {
+                clientY = globalEvent.clientY;
+              }
+            }
+
+            console.log('드래그 시작 Y 좌표:', clientY);
+            if (clientY !== undefined) {
+              setDragStartY(clientY);
+            } else {
+              console.warn('드래그 시작 Y 좌표를 찾을 수 없습니다. 전역 마우스 리스너를 사용합니다.');
+              // 전역 리스너가 다음 프레임에 값을 설정할 때까지 대기
+              setTimeout(() => {
+                if (currentMouseYRef.current !== null) {
+                  setDragStartY(currentMouseYRef.current);
+                }
+              }, 0);
+            }
+
+            // 드래그가 시작되면 도킹 바를 하이라이트 (드롭 타겟으로 보여주기)
+            setIsDockTargetActive(true);
+          }}
+          onDragStop={(layout, item, e) => {
+            /**
+             * 드래그 종료 핸들러
+             * 
+             * 드래그가 끝나면:
+             * 1. 도킹 바 영역에 드롭했는지 확인 (도킹 바 전체 영역 + 하단 여유 공간)
+             * 2. 위로 충분히 드래그했는지 확인 (DOCKING_VERTICAL_THRESHOLD 이상)
+             * 3. 두 조건을 모두 만족하면 카드를 도킹 탭으로 이동
+             * 4. 항상 드래그 상태와 도킹 바 하이라이트를 초기화
+             */
+            console.log('onDragStop 호출됨:', { item: item.i, dragStartY, draggingItemId });
+            try {
+              if (!dragStartY || item.i !== draggingItemId) {
+                console.log('드래그 조건 불일치:', { dragStartY, itemId: item.i, draggingItemId });
+                return;
+              }
+
+              // 마우스/터치 이벤트에서 Y 좌표 추출
+              // react-grid-layout의 이벤트는 일반 마우스 이벤트와 다를 수 있음
+              let clientY: number | undefined;
+              
+              if (e) {
+                // MouseEvent인 경우
+                if ('clientY' in e) {
+                  clientY = (e as MouseEvent).clientY;
+                }
+                // TouchEvent인 경우
+                else if ('changedTouches' in e && e.changedTouches && e.changedTouches.length > 0) {
+                  clientY = e.changedTouches[0].clientY;
+                }
+                // 다른 형태의 이벤트인 경우
+                else if ('nativeEvent' in e) {
+                  const nativeEvent = (e as any).nativeEvent;
+                  if (nativeEvent && 'clientY' in nativeEvent) {
+                    clientY = nativeEvent.clientY;
+                  } else if (nativeEvent && 'changedTouches' in nativeEvent && nativeEvent.changedTouches && nativeEvent.changedTouches.length > 0) {
+                    clientY = nativeEvent.changedTouches[0].clientY;
+                  }
+                }
+              }
+              
+              // 이벤트에서 Y 좌표를 찾을 수 없으면 전역 마우스 위치 ref 사용
+              if (clientY === undefined) {
+                clientY = currentMouseYRef.current ?? undefined;
+              }
+              
+              // 그래도 없으면 window.event 사용
+              if (clientY === undefined) {
+                const globalEvent = (window.event as MouseEvent) || (e as any);
+                if (globalEvent && 'clientY' in globalEvent) {
+                  clientY = globalEvent.clientY;
+                }
+              }
+              
+              if (clientY === undefined) {
+                console.warn('onDragStop: Y 좌표를 찾을 수 없음');
+                return; // Y 좌표가 없으면 도킹 체크 불가
+              }
+
+              // 위로 드래그한 거리 계산 (위로 드래그하면 양수)
+              const deltaY = dragStartY - clientY;
+
+              // 도킹 바 영역 정보 가져오기
+              const dockBarEl = dockBarRef.current;
+              if (!dockBarEl) {
+                console.log('도킹 바 요소를 찾을 수 없습니다.');
+                return;
+              }
+
+              const rect = dockBarEl.getBoundingClientRect();
+
+              // 도킹 바 영역 체크 (더 관대한 범위)
+              // 도킹 바의 상단 위쪽 여유 공간부터 하단 아래쪽 여유 공간까지의 범위
+              const isNearDockBar =
+                clientY >= rect.top - DOCKING_NEAR_BAR_OFFSET &&
+                clientY <= rect.bottom + DOCKING_NEAR_BAR_OFFSET;
+
+              // 도킹 바 영역 내에 직접 드롭한 경우
+              const isInDockBarArea = clientY >= rect.top && clientY <= rect.bottom;
+
+              // 위로 충분히 드래그한 경우 (위로 드래그하면 양수)
+              const isDraggedUpEnough = deltaY > DOCKING_VERTICAL_THRESHOLD;
+
+              console.log('도킹 체크:', {
+                clientY,
+                dragStartY,
+                deltaY,
+                dockBarTop: rect.top,
+                dockBarBottom: rect.bottom,
+                isNearDockBar,
+                isInDockBarArea,
+                isDraggedUpEnough,
+                threshold: DOCKING_VERTICAL_THRESHOLD,
+              });
+
+              // 언도킹 조건:
+              // 1. 도킹 바 영역 내에 직접 드롭한 경우 (가장 직관적) - 위로 드래그 조건 없음
+              // 2. 도킹 바 근처에 드롭하고 위로 충분히 드래그한 경우
+              if (isInDockBarArea || (isNearDockBar && isDraggedUpEnough)) {
+                // 이때만 언도킹 (카드를 도킹된 카드 탭으로 이동)
+                console.log('도킹 실행:', item.i);
+                dockCard(item.i as DashboardCardId);
+              } else {
+                console.log('도킹 조건 불만족');
+              }
+            } finally {
+              // 드래그가 끝나면 항상 상태 초기화
+              setDragStartY(null);
+              setDraggingItemId(null);
+              setIsDockTargetActive(false);
+            }
+          }}
+        >
+          {activeCards.map((cardId) => {
+            const gridItem = layout.find(l => l.i === cardId);
+            if (!gridItem) return null;
+            return (
+              <div key={cardId} data-grid={gridItem}>
+                {renderCard(cardId)}
+              </div>
+            );
+          })}
         </ResponsiveGridLayout>
       </>
     );
@@ -960,9 +1424,69 @@ const UserDashboardPage: React.FC = () => {
           </div>
         )}
 
+        {/* 도킹된 카드 탭 영역 */}
+        {/* 도킹된 카드가 있거나 드래그 중일 때 표시 */}
+        {(dockedCards.length > 0 || isDockTargetActive) && (
+          <div
+            ref={dockBarRef}
+            style={{
+              ...styles.dockedBar,
+              ...(isDockTargetActive ? styles.dockedBarActive : {}),
+            }}
+          >
+            <span style={styles.dockedLabel}>
+              {dockedCards.length > 0 ? '도킹된 카드' : '카드를 여기로 드래그하세요'}
+              {isDockTargetActive && (
+                <span style={styles.dockedHint}> ← 여기에 드롭하면 탭으로 이동합니다</span>
+              )}
+            </span>
+            {dockedCards.length > 0 && (
+              <div style={styles.dockedTabs}>
+                {dockedCards.map((id) => (
+                  <button
+                    key={id}
+                    style={styles.dockedTab}
+                    onClick={() => undockCard(id)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(129, 140, 248, 0.3)';
+                      e.currentTarget.style.border = '1px solid rgba(129, 140, 248, 0.8)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.2)';
+                      e.currentTarget.style.border = '1px solid rgba(129, 140, 248, 0.6)';
+                    }}
+                  >
+                    {getCardTitle(id)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 메인 콘텐츠 (카드 그리드) */}
         {renderContent()}
       </div>
+
+      {/* 확대 카드 오버레이 */}
+      {expandedCardId && (
+        <div className="dashboard-expand-overlay">
+          <div className="dashboard-expand-card">
+            <DashboardCard
+              title={getCardTitle(expandedCardId)}
+              subtitle={getCardSubtitle(expandedCardId)}
+              category={getCardCategory(expandedCardId)}
+              footerText={`기준일자: ${getCurrentDateString()}`}
+              onChatClick={() => handleChatClick(getCardTitle(expandedCardId))}
+              onDock={() => dockCard(expandedCardId)}
+              onToggleExpand={() => setExpandedCardId(null)}
+              style={{ height: '100%', minHeight: '600px' }}
+            >
+              {renderExpandedCardContentRef.current ? renderExpandedCardContentRef.current(expandedCardId) : null}
+            </DashboardCard>
+          </div>
+        </div>
+      )}
 
       {/* AI 프롬프트 모달 */}
       <AiPromptModal
@@ -1147,6 +1671,54 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '1.2rem',
     fontWeight: '600',
     color: '#f1f5f9', // 다크 테마: 밝은 텍스트
+  },
+  // 도킹된 카드 탭 영역 스타일
+  dockedBar: {
+    margin: '12px 0 16px',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    background: 'rgba(15, 23, 42, 0.7)', // 다크 테마: 어두운 배경
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    border: '1px dashed rgba(148, 163, 184, 0.5)', // 점선 테두리
+    transition: 'background 0.15s ease, border 0.15s ease, box-shadow 0.15s ease', // border-color 대신 border 사용
+  },
+  dockedBarActive: {
+    background: 'rgba(30, 64, 175, 0.4)', // 활성화 시: 살짝 파란 빛
+    border: '1px solid rgba(129, 140, 248, 0.9)', // 활성화 시: 밝은 보라색 테두리 (borderColor 대신 border 사용)
+    boxShadow: '0 0 0 1px rgba(129, 140, 248, 0.6)', // 활성화 시: 그림자 효과
+  },
+  dockedLabel: {
+    color: '#e5e7eb',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
+    opacity: 0.8,
+  },
+  dockedHint: {
+    color: '#a5b4fc', // 활성화 시 힌트 텍스트 색상
+    fontSize: '0.75rem',
+    fontWeight: '400',
+    marginLeft: '8px',
+    fontStyle: 'italic',
+  },
+  dockedTabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  dockedTab: {
+    borderRadius: '9999px',
+    padding: '4px 10px',
+    background: 'rgba(79, 70, 229, 0.2)', // 다크 테마: 보라색 배경
+    color: '#e5e7eb',
+    fontSize: '12px',
+    border: '1px solid rgba(129, 140, 248, 0.6)',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s, border 0.2s', // border-color 대신 border 사용
+    fontWeight: '500',
   },
 };
 

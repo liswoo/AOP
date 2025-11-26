@@ -26,6 +26,7 @@
 .react-grid-item.react-draggable-dragging {
   transition: none;
   z-index: 1000;
+  opacity: 0.5; /* 드래그 중인 카드 투명도 50% */
 }
 
 /* 드래그 핸들 커서 스타일 */
@@ -42,6 +43,7 @@
   box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4) !important; /* 보라색 그림자 */
   transform: scale(1.02);
   border: '1px solid rgba(139, 92, 246, 0.5)';
+  /* opacity는 부모 요소(.react-draggable-dragging)에서 상속받아 자동으로 50% 적용됨 */
 }
 
 /* DashboardCard 본문 영역 (react-grid-layout과 Chart.js 높이를 맞추기 위한 처리) */
@@ -60,4 +62,48 @@
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+/* 확대 카드 오버레이 */
+.dashboard-expand-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px;
+  padding-top: 120px; /* 필터 바 아래부터 시작 */
+  pointer-events: none; /* 기본은 클릭 막고 */
+  z-index: 50; /* 다른 요소들 위에 표시 */
+  overflow-y: auto; /* 스크롤 가능 */
+}
+
+/* 확대 카드 오버레이 배경 (어둡게) */
+.dashboard-expand-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75); /* 다크 테마: 반투명 어두운 배경 */
+  z-index: -1; /* 카드 뒤에 배경 */
+}
+
+/* 확대된 카드 컨테이너 */
+.dashboard-expand-card {
+  width: 100%;
+  max-width: 1400px;
+  min-height: 600px;
+  pointer-events: auto; /* 카드에만 인터랙션 허용 */
+  z-index: 51;
+  animation: expandFadeIn 0.2s ease-out; /* 페이드인 애니메이션 */
+}
+
+@keyframes expandFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

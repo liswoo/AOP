@@ -28,8 +28,9 @@ interface DashboardCardProps {
   title: string;
   subtitle?: string;
   category?: string;
-  showFavorite?: boolean;
   onChatClick?: () => void;
+  onDock?: () => void; // 카드를 도킹 탭으로 이동하는 핸들러
+  onToggleExpand?: () => void; // 카드 확대/축소 토글 핸들러
   footerText?: string;
   children: React.ReactNode;
   style?: React.CSSProperties; // react-grid-layout과 Chart.js 높이를 맞추기 위한 처리
@@ -39,14 +40,13 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   title,
   subtitle,
   category,
-  showFavorite = true,
   onChatClick,
+  onDock,
+  onToggleExpand,
   footerText,
   children,
   style,
 }) => {
-  // 즐겨찾기 상태 관리 (로컬 state)
-  const [isFavorite, setIsFavorite] = useState(false);
   // hover 상태 관리
   const [isHovered, setIsHovered] = useState(false);
 
@@ -66,10 +66,14 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 카드 헤더 (드래그 핸들) */}
-      <div className="dashboard-card-drag-handle" style={styles.header}>
-        {/* 좌측: 카테고리 뱃지 + 제목 + 부제목 */}
-        <div style={styles.headerLeft}>
+      {/* 카드 헤더 */}
+      <div style={styles.header}>
+        {/* 좌측: 카테고리 뱃지 + 제목 + 부제목 (드래그 핸들 영역) */}
+        <div
+          className="dashboard-card-drag-handle"
+          style={styles.headerLeft}
+          onDoubleClick={onToggleExpand} // 더블클릭으로 확대/축소
+        >
           {category && (
             <span style={styles.categoryBadge}>{category}</span>
           )}
@@ -81,11 +85,16 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
           </div>
         </div>
 
-        {/* 우측: 아이콘 영역 */}
-        <div style={styles.headerRight}>
+        {/* 우측: 아이콘 영역 (드래그 취소 영역) */}
+        <div
+          className="dashboard-card-actions"
+          style={styles.headerRight}
+          onMouseDown={(e) => e.stopPropagation()} // 드래그 시작 차단
+        >
           {/* 말풍선 아이콘 (AI 프롬프트 모달 열기) */}
           {onChatClick && (
             <button
+              type="button"
               onClick={onChatClick}
               style={styles.iconButton}
               title="AI 분석 요청"
@@ -93,24 +102,38 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
               💬
             </button>
           )}
-          {/* 즐겨찾기 아이콘 */}
-          {showFavorite && (
+          {/* 확대/축소 아이콘 */}
+          {onToggleExpand && (
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
-              style={{
-                ...styles.iconButton,
-                color: isFavorite ? '#ff6b6b' : '#999',
-              }}
-              title={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              type="button"
+              onClick={onToggleExpand}
+              style={styles.iconButton}
+              title="카드 확대/축소"
+              aria-label="카드 확대/축소"
             >
-              {isFavorite ? '♥' : '♡'}
+              ⛶
+            </button>
+          )}
+          {/* 도킹 아이콘 (카드를 상단 탭으로 이동) */}
+          {onDock && (
+            <button
+              type="button"
+              onClick={onDock}
+              style={styles.iconButton}
+              title="카드 도킹 (상단 탭으로 이동)"
+            >
+              📌
             </button>
           )}
         </div>
       </div>
 
       {/* 카드 본문 (react-grid-layout과 Chart.js 높이를 맞추기 위한 처리) */}
-      <div className="dashboard-card-body" style={styles.body}>
+      <div
+        className="dashboard-card-body"
+        style={styles.body}
+        onMouseDown={(e) => e.stopPropagation()} // 드래그 시작 차단
+      >
         {children}
       </div>
 

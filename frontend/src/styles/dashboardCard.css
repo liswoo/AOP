@@ -2,9 +2,33 @@
  * DashboardCard 다크 테마 스타일
  */
 
+/* 드래그 핸들 커서 스타일 */
+.dashboard-card-drag-handle {
+  cursor: move;
+  user-select: none; /* 텍스트 선택 방지 */
+}
+
+.dashboard-card-drag-handle:hover {
+  cursor: move;
+}
+
+/* 드래그 취소 영역 (아이콘/바디) */
+.dashboard-card-actions {
+  /* 이 영역에서는 드래그가 시작되지 않음 */
+}
+
+.dashboard-card-body {
+  /* 이 영역에서는 드래그가 시작되지 않음 */
+}
+
+/* 카드 헤더가 차트 캔버스 등에 가려지지 않도록 */
+.dashboard-card-header {
+  position: relative;
+  z-index: 10;
+}
+
 /* 아이콘 버튼 hover 효과 */
-.dashboard-card .dashboard-card-drag-handle button:hover {
+.dashboard-card .dashboard-card-actions button:hover {
   color: #8b5cf6; /* 보라색 */
   transform: scale(1.1);
 }
-
