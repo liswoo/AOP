@@ -85,6 +85,11 @@ const Header: React.FC<HeaderProps> = ({
         >
           ☰
         </button>
+        {/* AOP 로고 */}
+        <div style={styles.logo}>
+          <span style={styles.logoText}>AOP</span>
+          <span style={styles.logoSubtext}>Always On Platform</span>
+        </div>
       </div>
       <div style={styles.rightSection}>
         {/* 프로필 아바타 + 드롭다운 메뉴 (내 정보, 로그아웃) */}
@@ -112,6 +117,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
+  },
+  logo: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '2px',
+    marginLeft: '0.5rem',
+  },
+  logoText: {
+    fontSize: '1.5rem',
+    fontWeight: 'bold',
+    color: '#8b5cf6', // 보라색 (purple-500)
+    letterSpacing: '0.05em',
+    lineHeight: 1,
+  },
+  logoSubtext: {
+    fontSize: '0.65rem',
+    color: '#94a3b8', // 슬레이트 그레이 (slate-400)
+    letterSpacing: '0.02em',
+    lineHeight: 1,
   },
   menuButton: {
     background: 'none',

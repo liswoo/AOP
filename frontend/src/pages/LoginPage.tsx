@@ -132,7 +132,7 @@ const LoginPage: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>로그인</h1>
+        <h1 style={styles.title}>AOP 로그인</h1>
         
         {/* 에러 메시지 표시 */}
         {error && (

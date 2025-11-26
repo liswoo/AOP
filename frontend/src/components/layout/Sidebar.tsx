@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     {
       path: '/dashboard',
       icon: '📊',
-      label: '대시보드',
+      label: 'Dashboard',
       show: true, // 모든 사용자에게 표시
     },
     // "내 정보"는 헤더의 프로필 드롭다운으로 이동
@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* 로고/타이틀 영역 */}
         <div className="sidebar-header">
           {open && (
-            <h2 className="sidebar-title">EIS 대시보드</h2>
+            <h2 className="sidebar-title">CNKP EIS</h2>
           )}
           {!open && (
             <div className="sidebar-logo-icon">📊</div>
@@ -99,7 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <aside className={`sidebar sidebar--mobile ${overlayOpen ? 'sidebar--mobile-open' : ''}`}>
         {/* 모바일 헤더 (닫기 버튼 포함) */}
         <div className="sidebar-header">
-          <h2 className="sidebar-title">EIS 대시보드</h2>
+          <h2 className="sidebar-title">AOP</h2>
           <button
             className="sidebar-close-button"
             onClick={onCloseOverlay}

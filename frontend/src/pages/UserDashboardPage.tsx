@@ -418,22 +418,22 @@ const UserDashboardPage: React.FC = () => {
    */
   const getPeriodDescription = (): string => {
     if (periodMode === 'recent7') {
-      return '최근 7일';
+      return 'Last 7 Days';
     } else if (periodMode === 'thisMonth') {
-      return '이번 달';
+      return 'This Month';
     } else if (periodMode === 'lastMonth') {
-      return '지난 달';
+      return 'Last Month';
     } else if (from && to) {
       return `${from} ~ ${to}`;
     }
-    return '최근 7일';
+    return 'Last 7 Days';
   };
 
   const getGroupByDescription = (): string => {
     const groupByMap = {
-      DAY: '일별',
-      WEEK: '주별',
-      MONTH: '월별',
+      DAY: 'Daily',
+      WEEK: 'Weekly',
+      MONTH: 'Monthly',
     };
     return groupByMap[groupBy];
   };
@@ -1692,14 +1692,14 @@ const UserDashboardPage: React.FC = () => {
     <>
       <div style={styles.container}>
         <h1 style={styles.pageTitle}>
-          대시보드 ({getPeriodDescription()}, {getGroupByDescription()})
+          Dashboard ({getPeriodDescription()}, {getGroupByDescription()})
         </h1>
 
         {/* 필터 바 */}
         <div style={styles.filterBar}>
           {/* 기간 선택 */}
           <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>기간:</label>
+            <label style={styles.filterLabel}>Period:</label>
             <div style={styles.periodOptions}>
               <label style={styles.radioLabel}>
                 <input
@@ -1709,7 +1709,7 @@ const UserDashboardPage: React.FC = () => {
                   checked={periodMode === 'recent7'}
                   onChange={(e) => setPeriodMode(e.target.value as any)}
                 />
-                최근 7일
+                Last 7 Days
               </label>
               <label style={styles.radioLabel}>
                 <input
@@ -1719,7 +1719,7 @@ const UserDashboardPage: React.FC = () => {
                   checked={periodMode === 'thisMonth'}
                   onChange={(e) => setPeriodMode(e.target.value as any)}
                 />
-                이번 달
+                This Month
               </label>
               <label style={styles.radioLabel}>
                 <input
@@ -1729,7 +1729,7 @@ const UserDashboardPage: React.FC = () => {
                   checked={periodMode === 'lastMonth'}
                   onChange={(e) => setPeriodMode(e.target.value as any)}
                 />
-                지난 달
+                Last Month
               </label>
               <label style={styles.radioLabel}>
                 <input
@@ -1739,7 +1739,7 @@ const UserDashboardPage: React.FC = () => {
                   checked={periodMode === 'custom'}
                   onChange={(e) => setPeriodMode(e.target.value as any)}
                 />
-                직접 선택
+                Custom Range
               </label>
             </div>
             {/* 직접 선택 모드일 때만 날짜 입력 필드 표시 */}
@@ -1763,7 +1763,7 @@ const UserDashboardPage: React.FC = () => {
                   style={styles.searchButton}
                   disabled={isLoading}
                 >
-                  조회
+                  Apply
                 </button>
               </div>
             )}
@@ -1771,16 +1771,16 @@ const UserDashboardPage: React.FC = () => {
 
           {/* 집계 단위 선택 */}
           <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>집계 단위:</label>
+            <label style={styles.filterLabel}>Group By:</label>
             <select
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as 'DAY' | 'WEEK' | 'MONTH')}
               style={styles.select}
               disabled={isLoading}
             >
-              <option value="DAY">일별(DAY)</option>
-              <option value="WEEK">주별(WEEK)</option>
-              <option value="MONTH">월별(MONTH)</option>
+              <option value="DAY">Daily (DAY)</option>
+              <option value="WEEK">Weekly (WEEK)</option>
+              <option value="MONTH">Monthly (MONTH)</option>
             </select>
           </div>
         </div>
