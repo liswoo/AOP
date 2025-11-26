@@ -9,16 +9,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -42,10 +38,10 @@ import java.util.stream.Collectors;
  * 이 필터는 인증을 담당하며, 인가는 SecurityConfig의 authorizeHttpRequests에서 처리합니다.
  * 
  * @Component: Spring이 이 클래스를 빈으로 등록합니다.
+ * @Order: 필터 순서 지정 (낮은 숫자가 먼저 실행됨)
  * @Slf4j: 로깅을 위한 Lombok 어노테이션
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -68,6 +64,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
+
+        String requestURI = request.getRequestURI();
+        String method = request.getMethod();
+
+        // OPTIONS 요청(CORS 프리플라이트)은 필터를 건너뛰기
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 로그인 요청은 JWT 필터를 건너뛰기 (토큰이 없으므로)
+        if ("/api/auth/login".equals(requestURI) || "/api/auth/health".equals(requestURI)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         try {
             // 1. HTTP 요청 헤더에서 JWT 토큰 추출
@@ -93,22 +104,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // 5. 사용자 정보 로드 (이미 SecurityContext에 없을 때만)
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // 6. UserDetails 조회
+                    // 6. UserDetails 조회 (DB에서 최신 권한 정보를 가져옴)
                     var userDetails = userDetailsService.loadUserByUsername(username);
+                    
+                    log.debug("JWT 필터: DB에서 로드한 권한 - username={}, authorities={}", 
+                            username, userDetails.getAuthorities().stream()
+                                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                                    .collect(Collectors.joining(", ")));
 
-                    // 7. 토큰에서 권한 정보 추출
+                    // 7. 토큰에서 권한 정보 추출 (참고용 로깅)
                     String authoritiesString = jwtTokenProvider.getAuthoritiesFromToken(token);
-                    List<SimpleGrantedAuthority> authorities = Arrays.stream(
-                                    authoritiesString.split(","))
-                            .map(SimpleGrantedAuthority::new)
-                            .collect(Collectors.toList());
+                    log.debug("JWT 토큰에서 추출한 권한 (참고용): {}", authoritiesString);
 
                     // 8. Authentication 객체 생성
+                    // 중요: DB에서 최신 권한을 가져온 userDetails.getAuthorities()를 사용합니다.
+                    // 이렇게 하면 토큰 발급 후 권한이 변경되어도 최신 권한이 반영됩니다.
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,  // credentials는 null (이미 인증됨)
-                                    authorities);
+                                    userDetails.getAuthorities());  // DB에서 가져온 최신 권한 사용
 
                     // 9. 요청 정보 설정
                     authentication.setDetails(
@@ -136,11 +151,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 request.setAttribute("exception", "TOKEN_INVALID");
             }
         } catch (Exception e) {
-            log.error("JWT 필터 처리 중 예외 발생: {}", e.getMessage());
+            log.error("JWT 필터 처리 중 예외 발생: {}", e.getMessage(), e);
             // 예외 발생 시에도 요청은 계속 진행 (다른 필터나 SecurityConfig에서 처리)
+            // 요청 본문이 소진되지 않도록 예외를 잡아서 계속 진행
+            request.setAttribute("exception", "TOKEN_INVALID");
         }
 
         // 10. 다음 필터로 요청 전달
+        // 예외가 발생해도 요청은 계속 진행되어야 합니다.
         filterChain.doFilter(request, response);
     }
 

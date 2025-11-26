@@ -28,7 +28,7 @@ interface DashboardCardProps {
   title: string;
   subtitle?: string;
   category?: string;
-  onChatClick?: () => void;
+  onAskAi?: () => void; // AI 분석 모드 열기 핸들러
   onDock?: () => void; // 카드를 도킹 탭으로 이동하는 핸들러
   onToggleExpand?: () => void; // 카드 확대/축소 토글 핸들러
   footerText?: string;
@@ -40,7 +40,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   title,
   subtitle,
   category,
-  onChatClick,
+  onAskAi,
   onDock,
   onToggleExpand,
   footerText,
@@ -91,11 +91,11 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
           style={styles.headerRight}
           onMouseDown={(e) => e.stopPropagation()} // 드래그 시작 차단
         >
-          {/* 말풍선 아이콘 (AI 프롬프트 모달 열기) */}
-          {onChatClick && (
+          {/* AI 분석 아이콘 (AI 분석 모드 열기) */}
+          {onAskAi && (
             <button
               type="button"
-              onClick={onChatClick}
+              onClick={onAskAi}
               style={styles.iconButton}
               title="AI 분석 요청"
             >

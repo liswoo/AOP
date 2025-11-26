@@ -2,15 +2,15 @@ spring:
   application:
     name: app
   
+  # 프로파일 설정 (기본값: postgresql)
+  # 사용법: java -jar app.jar --spring.profiles.active=oracle
+  # 또는 환경변수: SPRING_PROFILES_ACTIVE=oracle
+  profiles:
+    active: postgresql
+  
   # 데이터베이스 설정
   datasource:
-    # PostgreSQL 사용 시 (주석 해제)
-    # url: jdbc:postgresql://localhost:5432/appdb
-    # username: postgres
-    # password: postgres
-    # driver-class-name: org.postgresql.Driver
-    
-    # H2 인메모리 데이터베이스 (개발용)
+    # H2 인메모리 데이터베이스 (개발/테스트용)
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
     username: sa
@@ -25,14 +25,104 @@ spring:
       hibernate:
         format_sql: true  # SQL 포맷팅
     database-platform: org.hibernate.dialect.H2Dialect  # H2 사용 시
-    # PostgreSQL 사용 시 아래 주석 해제
-    # database-platform: org.hibernate.dialect.PostgreSQLDialect
   
   # H2 콘솔 (개발용, http://localhost:8080/h2-console)
   h2:
     console:
       enabled: true
       path: /h2-console
+
+---
+# PostgreSQL 프로파일 설정
+spring:
+  config:
+    activate:
+      on-profile: postgresql
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aop_db
+    username: aop
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+    # PostgreSQL 18 최적 설정
+    hikari:
+      # 커넥션 풀 설정
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      # PostgreSQL 18 최적화 옵션
+      connection-test-query: SELECT 1
+      # 커넥션 유효성 검사
+      validation-timeout: 5000
+      # 누수 감지
+      leak-detection-threshold: 60000
+  
+  # JPA 설정 (PostgreSQL)
+  jpa:
+    hibernate:
+      ddl-auto: update  # 개발용: 엔티티 변경 시 자동으로 스키마 업데이트
+      # validate: 스키마 검증만 수행 (운영 환경 권장)
+      # update: 스키마 자동 업데이트 (개발 환경)
+      # create: 시작 시 스키마 생성 (테스트 환경)
+      # create-drop: 시작 시 생성, 종료 시 삭제 (테스트 환경)
+      # none: 자동 스키마 관리 비활성화
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # PostgreSQL 18 방언 (자동 감지되지만 명시적으로 설정)
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # PostgreSQL 18 최적화 설정
+        jdbc:
+          batch_size: 20
+          order_inserts: true
+          order_updates: true
+          time_zone: Asia/Seoul
+        # 쿼리 성능 모니터링
+        generate_statistics: false  # 운영 환경에서는 false 권장
+    # 엔티티 스캔 패키지
+    open-in-view: false  # OSIV 비활성화 (권장)
+
+# JWT 설정 (PostgreSQL 프로파일)
+app:
+  jwt:
+    secret: your-secret-key-change-this-in-production-minimum-256-bits
+    expiration-millis: 3600000
+
+---
+# Oracle 프로파일 설정 (추후 사용 가능)
+spring:
+  config:
+    activate:
+      on-profile: oracle
+  
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521:XE
+    username: aop
+    password: 1234
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.OracleDialect
+        jdbc:
+          batch_size: 20
+          order_inserts: true
+          order_updates: true
+    open-in-view: false
 
 # 서버 포트
 server:
@@ -42,10 +132,30 @@ server:
 logging:
   level:
     com.example.app: DEBUG
+    com.example.app.config: DEBUG  # 필터 로그 확인
     org.springframework.security: DEBUG
+    # 데이터베이스 연결 로그 확인
+    org.springframework.jdbc.datasource: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # PostgreSQL 드라이버 로그
+    org.postgresql: INFO
+    # HikariCP 커넥션 풀 로그
+    com.zaxxer.hikari: DEBUG
+    # 데이터소스 초기화 로그
+    org.springframework.boot.autoconfigure.jdbc: DEBUG
+    # HTTP 요청/응답 로그
+    org.springframework.web: DEBUG
+    org.springframework.web.filter: DEBUG
 
-# JWT 설정
+# 애플리케이션 커스텀 설정
 app:
+  # 데이터베이스 연결 테스트 설정
+  db:
+    test:
+      enabled: true  # 애플리케이션 시작 시 DB 연결 테스트 실행 (운영 환경에서는 false 권장)
+  
+  # JWT 설정
   jwt:
     # JWT 토큰 서명에 사용할 비밀키
     # 주의: 운영 환경에서는 반드시 강력한 랜덤 문자열로 변경하세요!

@@ -16,6 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -88,17 +89,40 @@ public class AuthController {
      * @return JWT 토큰과 사용자 정보
      */
     @PostMapping("/login")
+    @Transactional(readOnly = true)  // roles를 로드하기 위해 트랜잭션 필요
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        log.info("로그인 시도: {}", request.getUsername());
+        log.info("로그인 요청 수신 - request: {}", request);
+        
+        if (request == null) {
+            log.error("로그인 요청: request가 null입니다. 요청 본문이 전송되지 않았습니다.");
+            throw new IllegalArgumentException("요청 본문이 필요합니다. Content-Type을 application/json으로 설정하고 JSON 형식의 데이터를 전송해주세요.");
+        }
+        
+        if (request.getUsername() == null || request.getPassword() == null) {
+            log.error("로그인 요청: username 또는 password가 null입니다. username={}, password={}", 
+                    request.getUsername(), request.getPassword() != null ? "***" : null);
+            throw new IllegalArgumentException("사용자명과 비밀번호는 필수입니다.");
+        }
+        
+        log.info("로그인 시도: username={}", request.getUsername());
 
         // 1. AuthenticationManager를 사용하여 사용자 인증
         // UsernamePasswordAuthenticationToken은 사용자명과 비밀번호를 담는 인증 객체입니다.
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+        Authentication authentication;
+        try {
+            log.debug("AuthenticationManager.authenticate() 호출 시작: username={}", request.getUsername());
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsername(),
+                            request.getPassword()
+                    )
+            );
+            log.debug("AuthenticationManager.authenticate() 성공: username={}", request.getUsername());
+        } catch (Exception e) {
+            log.error("인증 실패: username={}, error={}, message={}", 
+                    request.getUsername(), e.getClass().getSimpleName(), e.getMessage(), e);
+            throw e; // 예외를 그대로 재발생 (AuthExceptionHandler에서 처리)
+        }
 
         // 2. 인증 성공 시 JWT 토큰 생성
         String accessToken = jwtTokenProvider.generateToken(authentication);
@@ -148,6 +172,7 @@ public class AuthController {
      * @throws ResponseStatusException 토큰이 없거나 인증되지 않은 경우 401 반환
      */
     @GetMapping("/me")
+    @Transactional(readOnly = true)  // roles를 로드하기 위해 트랜잭션 필요
     public ResponseEntity<UserInfoResponse> getCurrentUser(
             @AuthenticationPrincipal UserDetails userDetails) {
 

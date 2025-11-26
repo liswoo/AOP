@@ -112,9 +112,10 @@ public class AdminUserController {
      * @return 페이지네이션 정보를 포함한 사용자 목록
      */
     @GetMapping
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)  // roles를 로드하기 위해 트랜잭션 필요
     public ResponseEntity<Page<UserSummaryResponse>> getUsers(
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "siez",defaultValue = "20") int size,
+            @RequestParam(name = "size", defaultValue = "20") int size,  // 오타 수정: siez -> size
             @RequestParam(name = "keyword", required = false) String keyword) {
 
         log.info("사용자 목록 조회 요청 - page: {}, size: {}, keyword: {}", page, size, keyword);
@@ -137,6 +138,7 @@ public class AdminUserController {
      * @return 사용자 정보
      */
     @GetMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)  // roles를 로드하기 위해 트랜잭션 필요
     public ResponseEntity<UserSummaryResponse> getUser(@PathVariable("id") Long id) {
         log.info("사용자 상세 조회 요청 - id: {}", id);
 
@@ -300,16 +302,25 @@ public class AdminUserController {
      * @return UserSummaryResponse DTO
      */
     private UserSummaryResponse toUserSummaryResponse(User user) {
+        log.debug("toUserSummaryResponse 호출: username={}, roles 크기={}", 
+                user.getUsername(), user.getRoles() != null ? user.getRoles().size() : 0);
+        
         // 주요 역할 추출 (ADMIN 우선, 없으면 첫 번째 역할)
-        String primaryRole = user.getRoles().stream()
-                .map(Role::getCode)
-                .filter(code -> code.contains("ADMIN"))
-                .findFirst()
-                .orElse(user.getRoles().stream()
-                        .map(Role::getCode)
-                        .findFirst()
-                        .orElse("ROLE_USER"))
-                .replace("ROLE_", "");  // "ROLE_ADMIN" -> "ADMIN"
+        // roles가 비어있을 수 있으므로 안전하게 처리
+        String primaryRole = "USER";  // 기본값
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            primaryRole = user.getRoles().stream()
+                    .map(Role::getCode)
+                    .filter(code -> code.contains("ADMIN"))
+                    .findFirst()
+                    .orElse(user.getRoles().stream()
+                            .map(Role::getCode)
+                            .findFirst()
+                            .orElse("ROLE_USER"))
+                    .replace("ROLE_", "");  // "ROLE_ADMIN" -> "ADMIN"
+        }
+        
+        log.debug("primaryRole 추출 완료: username={}, role={}", user.getUsername(), primaryRole);
 
         return UserSummaryResponse.builder()
                 .id(user.getId())

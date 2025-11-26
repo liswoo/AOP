@@ -1,6 +1,5 @@
 package com.example.app.config;
 
-import com.example.app.domain.auth.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -51,11 +50,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final com.example.app.domain.auth.JwtTokenProvider jwtTokenProvider;
+    private final com.example.app.domain.auth.CustomUserDetailsService customUserDetailsService;
 
     /**
      * CORS 설정을 정의하는 빈
@@ -178,6 +178,9 @@ public class SecurityConfig {
             
             // 요청에 대한 인가 규칙 설정
             .authorizeHttpRequests(auth -> auth
+                // CORS 프리플라이트 요청(OPTIONS)은 모두 허용
+                .requestMatchers(org.springframework.web.bind.annotation.RequestMethod.OPTIONS.name()).permitAll()
+                
                 // 공개 엔드포인트 (인증 없이 접근 가능)
                 .requestMatchers("/api/auth/login", "/api/auth/health").permitAll()
                 
@@ -209,7 +212,10 @@ public class SecurityConfig {
             
             // JWT 인증 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
             // 이렇게 하면 모든 요청이 JWT 필터를 먼저 거치게 됩니다.
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            // 필터를 직접 생성하여 순서 문제를 해결합니다.
+            .addFilterBefore(
+                    new com.example.app.domain.auth.JwtAuthenticationFilter(jwtTokenProvider, customUserDetailsService),
+                    UsernamePasswordAuthenticationFilter.class);
         
         // H2 콘솔 사용을 위한 프레임 옵션 허용 (개발용)
         http.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));

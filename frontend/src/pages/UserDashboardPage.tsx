@@ -216,10 +216,24 @@ const UserDashboardPage: React.FC = () => {
   ]);
   const [dockedCards, setDockedCards] = useState<DashboardCardId[]>([]);
 
-  // 확대된 카드 ID 관리 (null이면 확대 상태 아님)
-  const [expandedCardId, setExpandedCardId] = useState<DashboardCardId | null>(null);
+  // AI 분석 모드 상태 관리
+  const [aiAnalysisCardId, setAiAnalysisCardId] = useState<DashboardCardId | null>(null);
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [aiDisplayedText, setAiDisplayedText] = useState(''); // 타이핑 효과용 표시 텍스트
+  const [aiLoading, setAiLoading] = useState(false);
+  const [isAiFullscreen, setIsAiFullscreen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false); // 타이핑 중인지 여부
   
-  // 확대된 카드 콘텐츠 렌더링 함수를 저장할 ref
+  // AI 분석 패널 전체화면 참조
+  const aiPanelRef = useRef<HTMLDivElement | null>(null);
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null); // 타이핑 인터벌 참조
+  
+  // 그리드 내부 확대 상태 관리
+  const [expandedGridCardId, setExpandedGridCardId] = useState<DashboardCardId | null>(null);
+  const [savedLayout, setSavedLayout] = useState<Layout[] | null>(null); // 확대 전 레이아웃 저장
+  
+  // 확대된 카드 콘텐츠 렌더링 함수를 저장할 ref (AI 분석 모드에서 사용)
   const renderExpandedCardContentRef = useRef<((cardId: DashboardCardId) => React.ReactNode) | null>(null);
 
   // 드래그 상태 관리
@@ -233,22 +247,24 @@ const UserDashboardPage: React.FC = () => {
   // 도킹 바 DOM을 참조하기 위한 ref
   const dockBarRef = useRef<HTMLDivElement | null>(null);
 
-  // ESC 키로 확대 카드 닫기
+  // ESC 키로 AI 분석 모드 닫기
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && expandedCardId) {
-        setExpandedCardId(null);
+      if (event.key === 'Escape' && aiAnalysisCardId) {
+        setAiAnalysisCardId(null);
+        setAiQuestion('');
+        setAiAnswer(null);
       }
     };
 
-    if (expandedCardId) {
+    if (aiAnalysisCardId) {
       window.addEventListener('keydown', handleEscape);
     }
 
     return () => {
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [expandedCardId]);
+  }, [aiAnalysisCardId]);
 
   /**
    * URL 쿼리 파라미터에서 필터 값 초기화
@@ -521,23 +537,394 @@ const UserDashboardPage: React.FC = () => {
   };
 
   /**
-   * AI 모달 열기 핸들러
-   * 각 카드의 말풍선 버튼에서 호출됩니다.
+   * AI 분석 모드 열기 핸들러
+   * 각 카드의 AI 버튼에서 호출됩니다.
    */
-  const handleChatClick = (cardTitle: string) => {
-    setAiModalTitle(cardTitle);
-    setAiModalOpen(true);
+  const handleAskAi = (cardId: DashboardCardId) => {
+    setAiAnalysisCardId(cardId);
+    setAiQuestion('');
+    setAiAnswer(null);
+  };
+
+  /**
+   * AI 질문 제출 핸들러 (Mock 응답)
+   * TODO: 실제 백엔드 API 연동 시 이 부분을 수정
+   */
+  const handleAiSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiQuestion.trim() || !aiAnalysisCardId) return;
+
+    setAiLoading(true);
+    setAiAnswer(null);
+    setAiDisplayedText(''); // 타이핑 텍스트 초기화
+    setIsTyping(false);
+
+    // 기존 타이핑 인터벌 정리
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+
+    // Mock 응답 생성 (실제 API 연동 시 교체)
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 분석 시간 시뮬레이션
+
+    const mockAnswer = generateMockAiAnswer(aiAnalysisCardId, aiQuestion);
+    
+    setAiAnswer(mockAnswer);
+    setAiLoading(false);
+    
+    // 타이핑 효과 시작
+    startTypingEffect(mockAnswer);
+  };
+
+  /**
+   * 타이핑 효과 시작
+   * 텍스트를 한 글자씩 표시하여 GPT 스타일의 응답 효과를 만듭니다.
+   */
+  const startTypingEffect = (fullText: string) => {
+    setIsTyping(true);
+    setAiDisplayedText('');
+    
+    let currentIndex = 0;
+    const typingSpeed = 20; // 밀리초 단위 (작을수록 빠름)
+
+    typingIntervalRef.current = setInterval(() => {
+      if (currentIndex < fullText.length) {
+        setAiDisplayedText(fullText.substring(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        // 타이핑 완료
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
+        }
+        setIsTyping(false);
+      }
+    }, typingSpeed);
+  };
+
+  // 컴포넌트 언마운트 시 타이핑 인터벌 정리
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  /**
+   * Mock AI 응답 생성 함수
+   * 카드 유형과 질문에 따라 상세한 분석 응답을 생성합니다.
+   */
+  const generateMockAiAnswer = (cardId: DashboardCardId, question: string): string => {
+    const cardTitle = getCardTitle(cardId);
+    const questionLower = question.toLowerCase();
+
+    // 카드별 기본 분석 템플릿
+    const analysisTemplates: Record<DashboardCardId, string> = {
+      profit: `📊 **주요 손익 분석 결과**
+
+**질문**: "${question}"
+
+**종합 분석**:
+현재 주요 손익 지표를 분석한 결과, 다음과 같은 인사이트를 도출했습니다:
+
+1. **매출 동향**
+   - 최근 기간 동안 매출은 전반적으로 안정적인 추세를 보이고 있습니다.
+   - 전년 대비 성장률이 양의 값을 유지하고 있어 긍정적인 신호입니다.
+   - 다만, 일부 항목에서 변동성이 관찰되므로 지속적인 모니터링이 필요합니다.
+
+2. **비용 구조**
+   - 운영비용이 예상 범위 내에서 관리되고 있습니다.
+   - 원가율이 목표 수준을 유지하고 있어 수익성 개선에 기여하고 있습니다.
+   - 인건비와 제조원가의 비중을 재검토하면 추가적인 효율화 여지가 있을 수 있습니다.
+
+3. **수익성 평가**
+   - 순이익률이 목표 대비 양호한 수준을 유지하고 있습니다.
+   - EBITDA 마진이 안정적으로 유지되고 있어 재무 건전성이 양호합니다.
+   - 향후 시장 변동성에 대비한 리스크 관리 전략 수립을 권장합니다.
+
+**권장 사항**:
+- 분기별 손익 구조 심화 분석을 통한 비용 최적화 기회 발굴
+- 시장 환경 변화에 따른 유연한 가격 전략 수립
+- 장기적인 수익성 개선을 위한 투자 포트폴리오 재검토`,
+
+      quality: `🔍 **품질 현황 분석 결과**
+
+**질문**: "${question}"
+
+**종합 분석**:
+품질 지표를 다각도로 분석한 결과, 다음과 같은 평가를 내릴 수 있습니다:
+
+1. **품질 지표 현황**
+   - 전반적인 품질 점수가 목표 수준을 상회하고 있어 우수한 품질 관리가 이루어지고 있습니다.
+   - 각 품질 항목별로 균형 잡힌 성과를 보이고 있어 체계적인 품질 관리 시스템이 작동하고 있음을 시사합니다.
+   - 일부 영역에서 개선 여지가 있으나, 전체적인 품질 수준은 안정적입니다.
+
+2. **품질 관리 프로세스**
+   - 품질 검사 프로세스가 효과적으로 운영되고 있어 불량률이 낮은 수준을 유지하고 있습니다.
+   - 공정별 품질 모니터링이 실시간으로 이루어지고 있어 신속한 대응이 가능한 구조입니다.
+   - 품질 개선 활동이 지속적으로 진행되고 있어 향상 추세가 예상됩니다.
+
+3. **리스크 요소**
+   - 특정 공정에서 주기적인 변동성이 관찰되므로 해당 영역에 대한 집중 관리가 필요합니다.
+   - 공급망 품질 관리 강화를 통해 외부 요인에 의한 품질 저하를 예방할 수 있습니다.
+   - 신제품 도입 시 품질 안정화 기간을 고려한 일정 관리가 중요합니다.
+
+**권장 사항**:
+- 품질 데이터의 심층 분석을 통한 근본 원인 분석(Root Cause Analysis) 수행
+- 품질 개선 프로젝트 우선순위 설정 및 실행 계획 수립
+- 고객 만족도와 연계한 품질 지표 개선 목표 재설정`,
+
+      stock: `📦 **재고 현황 분석 결과**
+
+**질문**: "${question}"
+
+**종합 분석**:
+재고 관리 현황을 분석한 결과, 다음과 같은 평가를 도출했습니다:
+
+1. **재고 수준 평가**
+   - 현재 재고 수준이 적정 범위 내에서 관리되고 있어 재고 회전율이 양호합니다.
+   - 품목별 재고 분포가 균형 잡혀 있어 특정 품목의 과다 재고 리스크가 낮습니다.
+   - 안전 재고 수준이 적절하게 설정되어 있어 공급 안정성이 확보되고 있습니다.
+
+2. **재고 회전 분석**
+   - 재고 회전율이 업계 평균 대비 우수한 수준을 유지하고 있어 자금 효율성이 높습니다.
+   - 고속 회전 품목과 저속 회전 품목의 구분이 명확하여 차별화된 관리 전략이 필요합니다.
+   - 계절성 품목의 재고 조정이 시기적절하게 이루어지고 있어 재고 부담이 최소화되고 있습니다.
+
+3. **재고 최적화 기회**
+   - 일부 품목에서 재고 감소 여지가 있어 추가적인 효율화가 가능합니다.
+   - 공급망 최적화를 통해 재고 보유 기간 단축 및 비용 절감이 기대됩니다.
+   - 재고 예측 모델 개선을 통해 더욱 정확한 재고 계획 수립이 가능할 것으로 보입니다.
+
+**권장 사항**:
+- ABC 분석을 통한 재고 관리 전략 차별화
+- 공급망 가시성 향상을 통한 재고 최적화
+- 재고 회전율 개선을 위한 프로세스 혁신 검토`,
+
+      trend: `📈 **매출 Trend 분석 결과**
+
+**질문**: "${question}"
+
+**종합 분석**:
+매출 추이를 시계열 분석한 결과, 다음과 같은 인사이트를 도출했습니다:
+
+1. **매출 추세 분석**
+   - 최근 기간 동안 매출이 전반적으로 상승 추세를 보이고 있어 성장 동력이 유지되고 있습니다.
+   - 계절성 패턴이 명확하게 관찰되어 계절별 마케팅 전략 수립에 활용할 수 있습니다.
+   - 단기 변동성은 있으나 장기 추세는 안정적이어서 지속 가능한 성장이 예상됩니다.
+
+2. **성장 동력 평가**
+   - 신제품 및 신규 고객 확보가 매출 성장에 기여하고 있어 시장 확장 전략이 효과적입니다.
+   - 기존 고객의 재구매율이 높아 고객 충성도가 양호한 것으로 평가됩니다.
+   - 시장 점유율 확대를 위한 추가적인 마케팅 투자 여지가 있습니다.
+
+3. **리스크 및 기회 요소**
+   - 시장 경쟁 심화에 따른 가격 압력이 예상되므로 차별화 전략이 중요합니다.
+   - 신흥 시장 진출 기회가 있어 시장 다각화를 통한 성장 기회 확보가 가능합니다.
+   - 기술 혁신을 통한 제품 경쟁력 강화가 지속적인 성장의 핵심 요소입니다.
+
+**권장 사항**:
+- 시장 세그먼트별 매출 분석을 통한 타겟 고객 재정의
+- 계절성 패턴을 활용한 재고 및 마케팅 계획 최적화
+- 장기적인 성장 전략 수립을 위한 시나리오 분석 수행`,
+
+      people: `👥 **인원 현황 분석 결과**
+
+**질문**: "${question}"
+
+**종합 분석**:
+인력 현황을 조직 및 업무 관점에서 분석한 결과, 다음과 같은 평가를 내릴 수 있습니다:
+
+1. **인력 구성 분석**
+   - 조직의 인력 구성이 업무 요구사항에 적합하게 배치되어 있어 운영 효율성이 양호합니다.
+   - 부서별 인력 분포가 균형 잡혀 있어 업무 부담이 적절하게 분산되고 있습니다.
+   - 경력 및 전문성 수준이 업계 평균 대비 우수하여 조직 역량이 높은 것으로 평가됩니다.
+
+2. **인력 활용도 평가**
+   - 인력 활용도가 목표 수준을 상회하고 있어 생산성이 높게 유지되고 있습니다.
+   - 프로젝트별 인력 배치가 효율적으로 이루어지고 있어 리소스 최적화가 잘 되고 있습니다.
+   - 업무 부하 분산이 적절하여 조직 건강도가 양호한 상태입니다.
+
+3. **인력 관리 개선 기회**
+   - 핵심 인력의 역량 강화를 위한 교육 프로그램 확대가 필요합니다.
+   - 신규 인력의 온보딩 프로세스 개선을 통해 생산성 향상이 기대됩니다.
+   - 인력 유지 및 이직률 관리 전략 수립을 통한 조직 안정성 강화가 중요합니다.
+
+**권장 사항**:
+- 인력 수요 예측 모델 구축을 통한 전략적 인력 계획 수립
+- 핵심 인재 육성 프로그램 개발 및 실행
+- 조직 문화 개선을 통한 직원 만족도 및 생산성 향상`,
+
+      downtime: `⚙️ **비가동 실적 분석 결과**
+
+**질문**: "${question}"
+
+**종합 분석**:
+비가동 현황을 설비 및 공정 관점에서 분석한 결과, 다음과 같은 인사이트를 도출했습니다:
+
+1. **비가동 현황 평가**
+   - 전체 비가동 시간이 목표 수준 이하로 관리되고 있어 설비 가동률이 우수합니다.
+   - 계획된 정비와 비계획 정지의 비율이 적절하여 예방 정비 전략이 효과적으로 작동하고 있습니다.
+   - 설비별 비가동 패턴이 안정적이어서 신뢰성이 높은 것으로 평가됩니다.
+
+2. **비가동 원인 분석**
+   - 정기 정비로 인한 비가동이 대부분을 차지하고 있어 계획적 관리가 잘 되고 있습니다.
+   - 긴급 수리로 인한 비계획 정지가 최소화되어 있어 설비 신뢰성이 높습니다.
+   - 일부 설비에서 주기적인 문제가 관찰되므로 집중 관리가 필요한 영역입니다.
+
+3. **개선 기회**
+   - 예측 정비(Predictive Maintenance) 도입을 통해 비계획 정지를 추가로 감소시킬 수 있습니다.
+   - 정비 프로세스 최적화를 통한 정비 시간 단축이 가능할 것으로 보입니다.
+   - 설비 모니터링 시스템 고도화를 통해 실시간 이상 징후 감지 능력 향상이 기대됩니다.
+
+**권장 사항**:
+- 설비별 비가동 원인 심화 분석을 통한 근본 원인 제거
+- 예방 정비 일정 최적화를 통한 가동률 향상
+- 설비 효율 개선 프로젝트 우선순위 설정 및 실행 계획 수립`,
+    };
+
+    // 기본 분석 템플릿 가져오기
+    let answer = analysisTemplates[cardId] || `**${cardTitle} 분석 결과**\n\n질문: "${question}"\n\n해당 데이터를 분석한 결과, 전반적으로 안정적인 추세를 보이고 있습니다.`;
+
+    // 질문 키워드에 따른 추가 분석 추가
+    if (questionLower.includes('감소') || questionLower.includes('하락') || questionLower.includes('떨어')) {
+      answer += `\n\n**추가 분석**: 질문하신 감소 현상에 대해 심층 분석한 결과, 이는 일시적인 변동성으로 보이며 장기 추세에는 큰 영향을 미치지 않을 것으로 판단됩니다. 다만, 지속적인 모니터링을 통해 추세 변화를 주시하는 것이 중요합니다.`;
+    } else if (questionLower.includes('증가') || questionLower.includes('상승') || questionLower.includes('올라')) {
+      answer += `\n\n**추가 분석**: 질문하신 증가 현상은 긍정적인 신호로 해석됩니다. 이러한 추세가 지속될 경우, 관련 전략을 더욱 강화하여 성과를 극대화할 수 있을 것으로 기대됩니다.`;
+    } else if (questionLower.includes('원인') || questionLower.includes('이유') || questionLower.includes('왜')) {
+      answer += `\n\n**원인 분석**: 데이터를 종합적으로 검토한 결과, 여러 요인이 복합적으로 작용하고 있는 것으로 보입니다. 주요 요인으로는 시장 환경 변화, 내부 프로세스 개선, 외부 요인 등이 있으며, 각 요인의 기여도를 정량적으로 분석하기 위해서는 추가 데이터가 필요합니다.`;
+    } else if (questionLower.includes('개선') || questionLower.includes('향상') || questionLower.includes('높')) {
+      answer += `\n\n**개선 방안**: 현재 데이터를 기반으로 한 개선 방안으로는 프로세스 최적화, 리소스 재배치, 기술 도입 등이 있습니다. 구체적인 개선 목표를 설정하고 단계적으로 실행 계획을 수립하는 것이 효과적일 것입니다.`;
+    }
+
+    return answer;
+  };
+
+  /**
+   * AI 분석 패널 전체화면 토글
+   */
+  const handleToggleAiFullscreen = async () => {
+    if (!aiPanelRef.current) return;
+
+    try {
+      if (!isAiFullscreen) {
+        // 전체화면 진입
+        if (aiPanelRef.current.requestFullscreen) {
+          await aiPanelRef.current.requestFullscreen();
+        } else if ((aiPanelRef.current as any).webkitRequestFullscreen) {
+          await (aiPanelRef.current as any).webkitRequestFullscreen();
+        } else if ((aiPanelRef.current as any).msRequestFullscreen) {
+          await (aiPanelRef.current as any).msRequestFullscreen();
+        }
+      } else {
+        // 전체화면 종료
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+      }
+    } catch (error) {
+      console.error('전체화면 전환 실패:', error);
+    }
+  };
+
+  // 전체화면 상태 변경 감지
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsAiFullscreen(isFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  /**
+   * 그리드 내부 확대/축소 핸들러
+   * 
+   * 확대: 선택된 카드를 전체 폭으로 변경하고 나머지 카드는 아래로 이동
+   * 축소: 저장된 레이아웃으로 복원
+   */
+  const handleToggleExpand = (cardId: DashboardCardId) => {
+    setLayout((currentLayout) => {
+      if (!expandedGridCardId || expandedGridCardId !== cardId) {
+        // 확대 시작
+        // 1) 현재 레이아웃 저장
+        setSavedLayout([...currentLayout]);
+        setExpandedGridCardId(cardId);
+
+        const cols = 12; // 그리드 열 수
+        const expandedHeight = Math.max(...currentLayout.map((l) => l.h), 6); // 최소 높이 6
+
+        // 2) 선택된 카드를 전체 폭으로 변경
+        const newLayout = currentLayout.map((item) => {
+          if (item.i === cardId) {
+            return {
+              ...item,
+              x: 0,
+              y: 0,
+              w: cols,
+              h: expandedHeight * 2, // 확대 시 높이 2배
+            };
+          }
+          // 나머지 카드는 아래로 이동
+          return {
+            ...item,
+            y: item.y + expandedHeight * 2,
+          };
+        });
+
+        return newLayout;
+      } else {
+        // 축소: 저장된 레이아웃 복원
+        if (savedLayout) {
+          setExpandedGridCardId(null);
+          const original = [...savedLayout];
+          setSavedLayout(null);
+          return original;
+        }
+        return currentLayout;
+      }
+    });
   };
 
   /**
    * 활성 카드 목록을 기반으로 레이아웃 계산
    * 
    * activeCards가 변경될 때마다 자동으로 레이아웃을 재계산합니다.
+   * 확대 상태가 아닐 때만 자동 계산된 레이아웃을 사용합니다.
    */
-  const layout = useMemo(
+  const baseLayout = useMemo(
     () => computeLayout(activeCards),
     [activeCards]
   );
+
+  // 확대 상태가 아니면 baseLayout 사용, 확대 상태면 layout state 사용
+  const [layout, setLayout] = useState<Layout[]>(baseLayout);
+
+  // baseLayout이 변경되면 layout도 업데이트 (단, 확대 상태가 아닐 때만)
+  useEffect(() => {
+    if (!expandedGridCardId) {
+      setLayout(baseLayout);
+    }
+  }, [baseLayout, expandedGridCardId]);
 
   /**
    * 도킹 임계값 상수
@@ -897,11 +1284,9 @@ const UserDashboardPage: React.FC = () => {
               subtitle="단위: 억원, %"
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick('주요 손익')}
+              onAskAi={() => handleAskAi('profit')}
               onDock={() => dockCard('profit')}
-              onToggleExpand={() => {
-                setExpandedCardId(prev => prev === 'profit' ? null : 'profit');
-              }}
+              onToggleExpand={() => handleToggleExpand('profit')}
               style={{ height: '100%' }}
             >
               <table style={styles.profitTable}>
@@ -941,11 +1326,9 @@ const UserDashboardPage: React.FC = () => {
               subtitle="단위: Point"
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick('품질 현황')}
+              onAskAi={() => handleAskAi('quality')}
               onDock={() => dockCard('quality')}
-              onToggleExpand={() => {
-                setExpandedCardId(prev => prev === 'quality' ? null : 'quality');
-              }}
+              onToggleExpand={() => handleToggleExpand('quality')}
               style={{ height: '100%' }}
             >
               <div className="chart-container">
@@ -978,11 +1361,9 @@ const UserDashboardPage: React.FC = () => {
               subtitle="단위: MT"
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick('재고 현황')}
+              onAskAi={() => handleAskAi('stock')}
               onDock={() => dockCard('stock')}
-              onToggleExpand={() => {
-                setExpandedCardId(prev => prev === 'stock' ? null : 'stock');
-              }}
+              onToggleExpand={() => handleToggleExpand('stock')}
               style={{ height: '100%' }}
             >
               {inventoryBarData ? (
@@ -1002,11 +1383,9 @@ const UserDashboardPage: React.FC = () => {
               subtitle="단위: 억원, %"
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick('매출 Trend')}
+              onAskAi={() => handleAskAi('trend')}
               onDock={() => dockCard('trend')}
-              onToggleExpand={() => {
-                setExpandedCardId(prev => prev === 'trend' ? null : 'trend');
-              }}
+              onToggleExpand={() => handleToggleExpand('trend')}
               style={{ height: '100%' }}
             >
               {salesTrendLineData && (
@@ -1024,11 +1403,9 @@ const UserDashboardPage: React.FC = () => {
               subtitle="단위: 명, %"
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick('인원 현황')}
+              onAskAi={() => handleAskAi('people')}
               onDock={() => dockCard('people')}
-              onToggleExpand={() => {
-                setExpandedCardId(prev => prev === 'people' ? null : 'people');
-              }}
+              onToggleExpand={() => handleToggleExpand('people')}
               style={{ height: '100%' }}
             >
               <div style={styles.personnelSummary}>
@@ -1059,11 +1436,9 @@ const UserDashboardPage: React.FC = () => {
               subtitle="단위: 백만원"
               category="M"
               footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick('비가동 실적')}
+              onAskAi={() => handleAskAi('downtime')}
               onDock={() => dockCard('downtime')}
-              onToggleExpand={() => {
-                setExpandedCardId(prev => prev === 'downtime' ? null : 'downtime');
-              }}
+              onToggleExpand={() => handleToggleExpand('downtime')}
               style={{ height: '100%' }}
             >
               {downtimeDoughnutData ? (
@@ -1110,10 +1485,17 @@ const UserDashboardPage: React.FC = () => {
           margin={[16, 16]}
           draggableHandle=".dashboard-card-drag-handle"
           draggableCancel=".dashboard-card-actions, .dashboard-card-body"
-          isDraggable={true}
+          isDraggable={!expandedGridCardId} // 확대 상태에서는 드래그 비활성화
           isResizable={false}
           compactType="vertical"
           preventCollision={false}
+          onLayoutChange={(currentLayout) => {
+            // 확대 상태가 아닐 때만 레이아웃 업데이트
+            // 확대 상태에서는 handleToggleExpand에서 직접 관리
+            if (!expandedGridCardId) {
+              setLayout(currentLayout);
+            }
+          }}
           onDragStart={(layout, item, e) => {
             /**
              * 드래그 시작 핸들러
@@ -1468,32 +1850,108 @@ const UserDashboardPage: React.FC = () => {
         {renderContent()}
       </div>
 
-      {/* 확대 카드 오버레이 */}
-      {expandedCardId && (
-        <div className="dashboard-expand-overlay">
-          <div className="dashboard-expand-card">
-            <DashboardCard
-              title={getCardTitle(expandedCardId)}
-              subtitle={getCardSubtitle(expandedCardId)}
-              category={getCardCategory(expandedCardId)}
-              footerText={`기준일자: ${getCurrentDateString()}`}
-              onChatClick={() => handleChatClick(getCardTitle(expandedCardId))}
-              onDock={() => dockCard(expandedCardId)}
-              onToggleExpand={() => setExpandedCardId(null)}
-              style={{ height: '100%', minHeight: '600px' }}
+      {/* AI 분석 모드 오버레이 */}
+      {aiAnalysisCardId && (
+        <div className="dashboard-ai-overlay">
+          <div 
+            ref={aiPanelRef}
+            className={`dashboard-ai-panel ${isAiFullscreen ? 'dashboard-ai-panel--fullscreen' : ''}`}
+          >
+            {/* 상단 헤더: 제목, 전체화면 버튼, 닫기 버튼 */}
+            <div className="dashboard-ai-header">
+              <h2 style={styles.aiHeaderTitle}>
+                {getCardTitle(aiAnalysisCardId)} - AI 분석
+              </h2>
+              <div style={styles.aiHeaderActions}>
+                <button
+                  onClick={handleToggleAiFullscreen}
+                  style={styles.aiFullscreenButton}
+                  title={isAiFullscreen ? '전체화면 종료' : '전체화면'}
+                  aria-label={isAiFullscreen ? '전체화면 종료' : '전체화면'}
+                >
+                  {isAiFullscreen ? '⤓' : '⤢'}
+                </button>
+                <button
+                  onClick={() => {
+                    setAiAnalysisCardId(null);
+                    setAiQuestion('');
+                    setAiAnswer(null);
+                    // 전체화면 상태도 초기화
+                    if (isAiFullscreen && document.exitFullscreen) {
+                      document.exitFullscreen().catch(() => {});
+                    }
+                  }}
+                  style={styles.aiCloseButton}
+                  aria-label="닫기"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* 메인 콘텐츠: 왼쪽 차트, 오른쪽 답변 */}
+            <div className="dashboard-ai-content">
+              {/* 왼쪽: 차트 영역 (2/3) */}
+              <div className="dashboard-ai-chart">
+                {renderExpandedCardContentRef.current
+                  ? renderExpandedCardContentRef.current(aiAnalysisCardId)
+                  : null}
+              </div>
+
+              {/* 오른쪽: AI 답변 영역 (1/3) */}
+              <div className="dashboard-ai-answer">
+                {aiLoading && (
+                  <div style={styles.aiLoading}>분석 중...</div>
+                )}
+                {!aiLoading && !aiAnswer && (
+                  <div style={styles.aiPlaceholder}>
+                    왼쪽 차트를 기준으로 궁금한 점을 아래에 입력해 주세요.
+                  </div>
+                )}
+                {!aiLoading && aiAnswer && (
+                  <div style={styles.aiAnswerBody}>
+                    {/* 타이핑 효과로 텍스트 표시 */}
+                    {aiDisplayedText.split('\n').map((line, index, array) => {
+                      // 마지막 줄이고 타이핑 중이면 커서 표시
+                      const isLastLine = index === array.length - 1;
+                      const showCursor = isLastLine && isTyping;
+                      
+                      return (
+                        <p key={index} style={{ margin: '0.5rem 0' }}>
+                          {line}
+                          {showCursor && <span style={styles.typingCursor}>▊</span>}
+                        </p>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 하단: 질문 입력 */}
+            <form
+              className="dashboard-ai-input"
+              onSubmit={handleAiSubmit}
             >
-              {renderExpandedCardContentRef.current ? renderExpandedCardContentRef.current(expandedCardId) : null}
-            </DashboardCard>
+              <input
+                type="text"
+                value={aiQuestion}
+                onChange={(e) => setAiQuestion(e.target.value)}
+                placeholder="이 차트에 대해 궁금한 점을 질문해 보세요."
+                style={styles.aiInput}
+                disabled={aiLoading}
+              />
+              <button
+                type="submit"
+                disabled={aiLoading || !aiQuestion.trim()}
+                style={styles.aiSubmitButton}
+              >
+                {aiLoading ? '분석 중...' : '보내기'}
+              </button>
+            </form>
           </div>
         </div>
       )}
-
-      {/* AI 프롬프트 모달 */}
-      <AiPromptModal
-        open={aiModalOpen}
-        title={aiModalTitle}
-        onClose={() => setAiModalOpen(false)}
-      />
     </>
   );
 };
@@ -1719,6 +2177,89 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     transition: 'background-color 0.2s, border 0.2s', // border-color 대신 border 사용
     fontWeight: '500',
+  },
+  // AI 분석 모드 스타일
+  aiHeaderTitle: {
+    margin: 0,
+    fontSize: '1.5rem',
+    fontWeight: '600',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
+  },
+  aiHeaderActions: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  aiFullscreenButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.2rem',
+    color: '#94a3b8', // 다크 테마: 회색 텍스트
+    cursor: 'pointer',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    transition: 'background-color 0.2s, color 0.2s',
+  },
+  aiCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.5rem',
+    color: '#94a3b8', // 다크 테마: 회색 텍스트
+    cursor: 'pointer',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    transition: 'background-color 0.2s, color 0.2s',
+  },
+  aiLoading: {
+    color: '#94a3b8',
+    fontSize: '0.9rem',
+    textAlign: 'center',
+    padding: '2rem',
+  },
+  aiPlaceholder: {
+    color: '#64748b', // 다크 테마: 회색 텍스트
+    fontSize: '0.9rem',
+    textAlign: 'center',
+    padding: '2rem',
+    fontStyle: 'italic',
+  },
+  aiAnswerBody: {
+    color: '#e5e7eb', // 다크 테마: 밝은 텍스트
+    fontSize: '0.95rem',
+    lineHeight: '1.6',
+    whiteSpace: 'pre-wrap', // 줄바꿈 유지
+    wordBreak: 'break-word',
+  },
+  typingCursor: {
+    display: 'inline-block',
+    width: '2px',
+    height: '1em',
+    backgroundColor: '#8b5cf6', // 보라색 커서
+    marginLeft: '2px',
+    animation: 'blink 1s infinite',
+    verticalAlign: 'baseline',
+  },
+  aiInput: {
+    flex: 1,
+    padding: '12px 16px',
+    border: '1px solid rgba(148, 163, 184, 0.3)',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    backgroundColor: '#0f172a', // 다크 테마: 어두운 배경
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
+    outline: 'none',
+    transition: 'border-color 0.2s',
+  },
+  aiSubmitButton: {
+    padding: '12px 24px',
+    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', // 보라색-파란색 그라데이션
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s, transform 0.2s',
   },
 };
 

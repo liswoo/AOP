@@ -45,8 +45,12 @@ public class JwtTokenProvider {
      * 매번 생성하지 않고 한 번만 생성하여 재사용합니다.
      */
     private SecretKey getSecretKey() {
-        return Keys.hmacShaKeyFor(
-                jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        String secret = jwtProperties.getSecret();
+        if (secret == null || secret.trim().isEmpty()) {
+            log.error("JWT secret이 설정되지 않았습니다. application.yml의 app.jwt.secret을 확인하세요.");
+            throw new IllegalStateException("JWT secret이 설정되지 않았습니다. application.yml의 app.jwt.secret을 확인하세요.");
+        }
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -69,6 +73,8 @@ public class JwtTokenProvider {
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
+        
+        log.debug("JWT 토큰 생성: username={}, authorities={}", username, authorities);
         
         // 현재 시간
         Date now = new Date();

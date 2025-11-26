@@ -2,6 +2,7 @@ package com.example.app.domain.user;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,13 +22,32 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     /**
-     * 사용자명으로 사용자 조회
-     * Spring Data JPA가 메서드 이름을 분석하여 자동으로 쿼리를 생성합니다.
+     * 사용자명으로 사용자 조회 (roles 포함)
+     * 
+     * @EntityGraph를 사용하여 roles를 함께 로드합니다.
+     * 이렇게 하면 LazyInitializationException을 방지할 수 있습니다.
      * 
      * @param username 사용자명
      * @return Optional<User> (없으면 Optional.empty())
      */
+    @EntityGraph(attributePaths = {"roles"})
     Optional<User> findByUsername(String username);
+
+    /**
+     * ID로 사용자 조회 (roles 포함)
+     * 
+     * @EntityGraph를 사용하여 roles를 함께 로드합니다.
+     * 이렇게 하면 LazyInitializationException을 방지할 수 있습니다.
+     * 
+     * @Query를 사용하여 명시적으로 쿼리를 작성합니다.
+     * Spring Data JPA의 메서드 네이밍 규칙을 피하기 위해 @Query를 사용합니다.
+     * 
+     * @param id 사용자 ID
+     * @return Optional<User>
+     */
+    @EntityGraph(attributePaths = {"roles"})
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
 
     /**
      * 이메일로 사용자 조회
@@ -68,10 +88,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * username 또는 name에 키워드가 포함된 사용자를 검색합니다.
      * 키워드가 null이거나 빈 문자열이면 모든 사용자를 반환합니다.
      * 
+     * @EntityGraph를 사용하여 roles를 함께 로드합니다.
+     * 이렇게 하면 LazyInitializationException을 방지할 수 있습니다.
+     * 
      * @param keyword 검색 키워드 (username 또는 name에 LIKE 검색)
      * @param pageable 페이지네이션 정보
      * @return 사용자 페이지
      */
+    @EntityGraph(attributePaths = {"roles"})
     @Query("SELECT u FROM User u WHERE " +
            "(:keyword IS NULL OR :keyword = '' OR " +
            "LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
