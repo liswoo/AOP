@@ -33,6 +33,7 @@ import LoginPage from '../pages/LoginPage';
 import AdminUserListPage from '../pages/AdminUserListPage';
 import UserDashboardPage from '../pages/UserDashboardPage';
 import ProfilePage from '../pages/ProfilePage';
+import ReportsPage from '../pages/ReportsPage';
 
 /**
  * AppRouter 컴포넌트
@@ -80,6 +81,12 @@ const AppRouter: React.FC = () => {
             <Route
               path="/profile"
               element={<ProfilePage />}
+            />
+            
+            {/* 리포트 페이지 (인증 필요, 역할 상관 없음) */}
+            <Route
+              path="/reports"
+              element={<ReportsPage />}
             />
           </Route>
 

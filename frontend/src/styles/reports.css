@@ -1,0 +1,309 @@
+/**
+ * Reports 페이지 스타일
+ * 
+ * AG Grid 기반 Workshop KPI 리포트 페이지를 위한 스타일입니다.
+ * 다크 테마(남색/보라 톤)로 기존 Dashboard 스타일과 일치시켰습니다.
+ */
+
+.reports-page {
+  padding: 24px;
+  min-height: calc(100vh - 80px); /* 헤더 높이 제외 */
+  background: #0f172a; /* 다크 테마 배경 */
+  color: #cbd5e1; /* 밝은 회색 텍스트 */
+}
+
+/* 페이지 헤더 */
+.reports-header {
+  margin-bottom: 24px;
+}
+
+.reports-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3); /* 보라색 테두리 */
+}
+
+/* 상단 컨트롤 바 */
+.reports-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: #1e293b; /* 다크 카드 배경 */
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  flex-wrap: wrap;
+}
+
+/* Period 선택 영역 */
+.reports-period-selector {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.period-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 14px;
+  user-select: none;
+}
+
+.period-radio input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #8b5cf6; /* 보라색 */
+}
+
+.period-radio:hover {
+  color: #8b5cf6;
+}
+
+.period-radio input[type="radio"]:checked + span {
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+/* 액션 버튼 영역 */
+.reports-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.reports-button {
+  padding: 10px 20px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reports-button:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #8b5cf6;
+  transform: translateY(-1px);
+}
+
+.reports-button:active {
+  transform: translateY(0);
+}
+
+.reports-button--export {
+  /* Export 버튼 스타일 */
+}
+
+.reports-button--ai {
+  /* AI 분석 버튼 스타일 */
+}
+
+/* 리포트 카드 */
+.report-card {
+  background: #1e293b; /* 다크 카드 배경 */
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 280px); /* 상단 컨트롤 높이 제외 */
+  min-height: 600px;
+}
+
+/* 카드 헤더 */
+.report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  background: #1e293b;
+}
+
+.report-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.report-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.report-card-icon-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 6px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.report-card-icon-button:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #8b5cf6;
+  transform: scale(1.1);
+}
+
+/* 카드 본문 */
+.report-card-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+/* AG Grid 커스텀 스타일 */
+.custom-report-grid {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+/* AG Grid 다크 테마 커스터마이징 */
+.ag-theme-alpine.custom-report-grid {
+  --ag-background-color: #1e293b;
+  --ag-header-background-color: #0f172a;
+  --ag-header-foreground-color: #cbd5e1;
+  --ag-odd-row-background-color: #1e293b;
+  --ag-even-row-background-color: #1a2332;
+  --ag-row-hover-color: rgba(139, 92, 246, 0.1);
+  --ag-selected-row-background-color: rgba(139, 92, 246, 0.2);
+  --ag-border-color: rgba(139, 92, 246, 0.2);
+  --ag-header-cell-hover-background-color: rgba(139, 92, 246, 0.15);
+  --ag-range-selection-background-color: rgba(139, 92, 246, 0.2);
+  --ag-range-selection-border-color: rgba(139, 92, 246, 0.5);
+  --ag-row-group-indent-size: 20px;
+  --ag-foreground-color: #e2e8f0; /* 숫자 가독성 향상을 위해 더 밝게 */
+  --ag-secondary-foreground-color: #cbd5e1;
+  --ag-disabled-foreground-color: #64748b;
+  --ag-input-disabled-background-color: #1e293b;
+  --ag-input-disabled-border-color: rgba(139, 92, 246, 0.2);
+  --ag-input-focus-border-color: rgba(139, 92, 246, 0.5);
+  font-size: 13px;
+}
+
+/* 그룹 행 스타일 */
+.ag-theme-alpine.custom-report-grid .ag-row-group {
+  font-weight: 600;
+  color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.1) !important;
+}
+
+/* 고정된 열 스타일 */
+.ag-theme-alpine.custom-report-grid .ag-pinned-left-cols-container {
+  background-color: #1e293b;
+  border-right: 2px solid rgba(139, 92, 246, 0.3);
+}
+
+/* 헤더 스타일 */
+.ag-theme-alpine.custom-report-grid .ag-header {
+  border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+  font-weight: 600;
+}
+
+/* 셀 스타일 */
+.ag-theme-alpine.custom-report-grid .ag-cell {
+  border-right: 1px solid rgba(139, 92, 246, 0.1);
+  padding: 8px 12px;
+  color: #e2e8f0; /* 기본 셀 텍스트 색상 (밝게) */
+}
+
+/* 숫자 열 정렬 및 가독성 향상 */
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="benchmark"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="ytd"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="jan"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="feb"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="mar"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="apr"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="may"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="jun"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="jul"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="aug"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="sep"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="oct"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="nov"],
+.ag-theme-alpine.custom-report-grid .ag-cell[col-id^="dec"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #f1f5f9 !important; /* 숫자 가독성 향상 - 더 밝은 색상 */
+  font-weight: 500; /* 숫자 굵기 약간 증가 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .reports-page {
+    padding: 16px;
+  }
+
+  .reports-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reports-period-selector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reports-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .reports-button {
+    flex: 1;
+  }
+
+  .report-card {
+    height: calc(100vh - 400px);
+    min-height: 400px;
+  }
+}
+
+/* 스크롤바 스타일 (다크 테마) */
+.custom-report-grid ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.custom-report-grid ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.custom-report-grid ::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 6px;
+}
+
+.custom-report-grid ::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+

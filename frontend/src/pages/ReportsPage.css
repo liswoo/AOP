@@ -1,0 +1,55 @@
+/**
+ * Reports 페이지 스타일
+ * 
+ * Workshop KPI Report 페이지의 스타일을 정의합니다.
+ * 다크 테마를 사용하되, 리포트 영역은 밝은 카드로 감싸서 엑셀 느낌을 살립니다.
+ */
+
+.reports-page {
+  padding: 24px;
+  background-color: #0f172a; /* 다크 배경 */
+  color: #f1f5f9;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reports-page-header {
+  margin-bottom: 16px;
+}
+
+.reports-page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.reports-page-subtitle {
+  font-size: 16px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.reports-page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

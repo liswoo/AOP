@@ -45,6 +45,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Dashboard',
       show: true, // 모든 사용자에게 표시
     },
+    {
+      path: '/reports',
+      icon: '📋',
+      label: 'Report',
+      show: true, // 모든 사용자에게 표시
+    },
     // "내 정보"는 헤더의 프로필 드롭다운으로 이동
     // {
     //   path: '/profile',
