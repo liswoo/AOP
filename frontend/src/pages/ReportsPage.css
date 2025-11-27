@@ -9,10 +9,11 @@
   padding: 24px;
   background-color: #0f172a; /* 다크 배경 */
   color: #f1f5f9;
-  min-height: calc(100vh - 64px);
+  height: calc(100vh - 64px); /* 헤더(64px) 제외하고 나머지를 전부 사용 */
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  box-sizing: border-box;
+  overflow: hidden; /* 페이지 전체 스크롤 제거 */
 }
 
 .reports-page-header {
@@ -39,7 +40,8 @@
 .reports-page-content {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  margin-top: 12px;
+  min-height: 0; /* 안쪽 flex 자식이 overflow 사용할 수 있게 */
 }
 
 .reports-card {
@@ -47,9 +49,9 @@
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
+  width: 100%;
   flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
+  display: flex; /* 안쪽 시트가 flex 1로 꽉 차도록 */
+  box-sizing: border-box;
 }

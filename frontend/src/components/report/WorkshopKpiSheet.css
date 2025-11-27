@@ -2,20 +2,27 @@
  * WorkshopKpiSheet 스타일
  * 
  * Handsontable 기반 엑셀 스타일 시트의 스타일을 정의합니다.
- * 엑셀 스크린샷과 유사한 밝은 테마를 적용합니다.
+ * 
+ * 중요 원칙:
+ * - border-width, border-style, height, line-height, padding은 변경하지 않음
+ * - background-color, color, font-weight, font-size, text-align만 변경
+ * - 이렇게 해야 격자선이 틀어지지 않고, 행 높이가 일정하게 유지됨
  */
 
+/* 리포트 카드 안에서 전체를 채우고, 스크롤은 이 컨테이너에서 처리 */
 .workshop-kpi-sheet-container {
+  flex: 1; /* reports-card 안에서 세로로 꽉 차도록 */
   width: 100%;
-  height: 100%;
   background-color: #ffffff;
   border-radius: 8px;
-  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  box-sizing: border-box;
+  overflow: auto; /* ✅ 시트 내용이 넘치면 여기서 세로/가로 스크롤 */
 }
 
 /* Handsontable 기본 스타일 - 밝은 테마 */
-.workshop-kpi-sheet-container :global(.handsontable) {
+.workshop-kpi-sheet-container .handsontable {
   background-color: #ffffff !important;
   color: #1f2937 !important;
   border: 1px solid #e5e7eb !important;
@@ -23,8 +30,14 @@
   font-size: 13px;
 }
 
+/* 테이블이 컨테이너 가로폭 100% 사용 */
+.workshop-kpi-sheet-container .ht_master .htCore {
+  width: 100% !important;
+  table-layout: fixed; /* 브라우저가 남는 폭을 열에 분배하도록 */
+}
+
 /* 헤더 행 스타일 */
-.workshop-kpi-sheet-container :global(.handsontable th) {
+.workshop-kpi-sheet-container .handsontable th {
   background-color: #f3f4f6 !important;
   color: #374151 !important;
   border: 1px solid #d1d5db !important;
@@ -35,7 +48,7 @@
 }
 
 /* 일반 셀 스타일 */
-.workshop-kpi-sheet-container :global(.handsontable td) {
+.workshop-kpi-sheet-container .handsontable td {
   background-color: #ffffff !important;
   color: #1f2937 !important;
   border: 1px solid #e5e7eb !important;
@@ -44,115 +57,147 @@
   line-height: 1.5;
 }
 
-/* Title 행 셀 (Workshop KPI - Total) - 진한 빨간 배경 */
-.workshop-kpi-sheet-container :global(.ht-cell-title) {
+/* ========================================
+ * Title 행 스타일 (row 0)
+ * "Workshop KPI - Total"
+ * ======================================== */
+.workshop-kpi-sheet-container td.kpi-title-cell,
+.workshop-kpi-sheet-container .htCore td.kpi-title-cell {
   background-color: #b91c1c !important; /* 진한 빨간색 */
   color: #ffffff !important;
-  font-weight: bold !important;
+  font-weight: 600 !important;
   font-size: 16px !important;
-  padding: 14px 16px !important;
   text-align: center !important;
-  border: none !important;
-  vertical-align: middle !important;
 }
 
-/* Period 행 셀 (Period : 2025-10 (All Dealer)) - 연한 회색 배경 */
-.workshop-kpi-sheet-container :global(.ht-cell-period) {
-  background-color: #f9fafb !important;
+/* ========================================
+ * Period 행 스타일
+ * "Period : 2025-10 (All Dealer)"
+ * ======================================== */
+.workshop-kpi-sheet-container td.kpi-period-cell,
+.workshop-kpi-sheet-container .htCore td.kpi-period-cell {
+  background-color: #f9fafb !important; /* 연한 회색 */
   color: #374151 !important;
-  font-weight: 400 !important;
+  font-weight: 500 !important;
   font-size: 12px !important;
-  padding: 8px 16px !important;
   text-align: left !important;
-  border: 1px solid #e5e7eb !important;
-  vertical-align: middle !important;
 }
 
-/* Section 행 셀 (Operations, Quality, Financials) - 빨간 배경, 볼드 */
-.workshop-kpi-sheet-container :global(.ht-cell-section) {
+/* ========================================
+ * Section 행 스타일
+ * "Operations", "Quality", "Financials"
+ * ======================================== */
+.workshop-kpi-sheet-container td.kpi-section-cell,
+.workshop-kpi-sheet-container .htCore td.kpi-section-cell {
   background-color: #dc2626 !important; /* 빨간색 */
   color: #ffffff !important;
-  font-weight: bold !important;
+  font-weight: 600 !important;
   font-size: 14px !important;
-  padding: 10px 16px !important;
   text-align: left !important;
-  border-top: 2px solid #b91c1c !important;
-  border-bottom: 2px solid #b91c1c !important;
-  border-left: 1px solid #b91c1c !important;
-  border-right: 1px solid #b91c1c !important;
-  vertical-align: middle !important;
+}
+
+/* ========================================
+ * 병합된 행 내부 선 제거
+ * Title / Section / Period 행을 하나의 막대형 셀로 표시
+ * ======================================== */
+.workshop-kpi-sheet-container .htCore td.kpi-title-cell,
+.workshop-kpi-sheet-container .htCore td.kpi-section-cell,
+.workshop-kpi-sheet-container .htCore td.kpi-period-cell {
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* 병합된 행 첫 번째 셀만 왼쪽 테두리 복원 */
+.workshop-kpi-sheet-container .htCore tr td.kpi-title-cell:first-child,
+.workshop-kpi-sheet-container .htCore tr td.kpi-section-cell:first-child,
+.workshop-kpi-sheet-container .htCore tr td.kpi-period-cell:first-child {
+  border-left: 1px solid #e5e7eb !important;
+}
+
+/* 병합된 행 마지막 셀만 오른쪽 테두리 복원 */
+.workshop-kpi-sheet-container .htCore tr td.kpi-title-cell:last-child,
+.workshop-kpi-sheet-container .htCore tr td.kpi-section-cell:last-child,
+.workshop-kpi-sheet-container .htCore tr td.kpi-period-cell:last-child {
+  border-right: 1px solid #e5e7eb !important;
 }
 
 /* Metric 행 - 지표명 셀 (좌측 정렬) */
-.workshop-kpi-sheet-container :global(.ht-cell-metric-label) {
+.ht-cell-metric-label {
   background-color: #ffffff !important;
   color: #1f2937 !important;
   font-weight: 500 !important;
   font-size: 13px !important;
   text-align: left !important;
-  padding: 8px 12px !important;
   white-space: normal !important;
   word-wrap: break-word !important;
 }
 
 /* Metric 행 - 숫자 셀 (우측 정렬) */
-.workshop-kpi-sheet-container :global(.ht-cell-metric-number) {
+.ht-cell-metric-number {
   background-color: #ffffff !important;
   color: #1f2937 !important;
   font-weight: 400 !important;
   font-size: 13px !important;
   text-align: right !important;
-  padding: 8px 12px !important;
   font-variant-numeric: tabular-nums; /* 숫자 정렬을 위한 등폭 숫자 */
 }
 
 /* 음수 값 셀 (빨간색 텍스트) */
-.workshop-kpi-sheet-container :global(.ht-cell-negative) {
+.ht-cell-negative {
   color: #dc2626 !important; /* 빨간색 */
   font-weight: 600 !important;
 }
 
-/* 행 높이 조정 */
-.workshop-kpi-sheet-container :global(.handsontable tbody tr) {
-  height: auto !important;
-  min-height: 28px !important;
-}
-
-.workshop-kpi-sheet-container :global(.handsontable thead tr) {
-  height: 32px !important;
-}
-
 /* 선택된 셀 스타일 */
-.workshop-kpi-sheet-container :global(.handsontable .currentRow),
-.workshop-kpi-sheet-container :global(.handsontable .currentCol) {
+.workshop-kpi-sheet-container .handsontable .currentRow,
+.workshop-kpi-sheet-container .handsontable .currentCol {
   background-color: #e0f2fe !important;
 }
 
-.workshop-kpi-sheet-container :global(.handsontable .area) {
+.workshop-kpi-sheet-container .handsontable .area {
   background-color: #bae6fd !important;
 }
 
 /* hover 시 행 강조 */
-.workshop-kpi-sheet-container :global(.handsontable tbody tr:hover td) {
+.workshop-kpi-sheet-container .handsontable tbody tr:hover td {
   background-color: #f9fafb !important;
 }
 
+/* ========================================
+ * 병합 행 hover 시 색상 유지
+ * Title / Section / Period 행의 배경색이 hover 시에도 유지되도록 함
+ * ======================================== */
+.workshop-kpi-sheet-container .htCore tr:hover td.kpi-title-cell {
+  background-color: #b91c1c !important; /* Title 배경색 유지 */
+  color: #ffffff !important;
+}
+
+.workshop-kpi-sheet-container .htCore tr:hover td.kpi-section-cell {
+  background-color: #dc2626 !important; /* Section 배경색 유지 */
+  color: #ffffff !important;
+}
+
+.workshop-kpi-sheet-container .htCore tr:hover td.kpi-period-cell {
+  background-color: #f9fafb !important; /* Period 배경색 유지 */
+  color: #374151 !important;
+}
+
 /* 스크롤바 영역 */
-.workshop-kpi-sheet-container :global(.handsontable .wtHolder) {
+.workshop-kpi-sheet-container .handsontable .wtHolder {
   background-color: #ffffff !important;
 }
 
 /* 고정 컬럼 경계선 */
-.workshop-kpi-sheet-container :global(.handsontable .ht_clone_left th),
-.workshop-kpi-sheet-container :global(.handsontable .ht_clone_left td) {
+.workshop-kpi-sheet-container .handsontable .ht_clone_left th,
+.workshop-kpi-sheet-container .handsontable .ht_clone_left td {
   border-right: 2px solid #9ca3af !important;
 }
 
-.workshop-kpi-sheet-container :global(.handsontable .ht_clone_top_left) {
+.workshop-kpi-sheet-container .handsontable .ht_clone_top_left {
   border-right: 2px solid #9ca3af !important;
 }
 
 /* 읽기 전용 모드 스타일 (선택 불가) */
-.workshop-kpi-sheet-container :global(.handsontable.readOnly) {
+.workshop-kpi-sheet-container .handsontable.readOnly {
   cursor: default !important;
 }

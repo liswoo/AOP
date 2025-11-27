@@ -27,7 +27,6 @@ const ReportsPage: React.FC = () => {
         <div className="reports-card">
           <WorkshopKpiSheet
             periodText={periodText}
-            height={window.innerHeight - 250}
             readOnly={true}
           />
         </div>

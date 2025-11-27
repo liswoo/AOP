@@ -102,3 +102,4 @@ export const WORKSHOP_KPI_ROWS: WorkshopKpiRowConfig[] = [
   { id: 'metric-revenue-variance', type: 'metric', sectionKey: 'financials', metricKey: 'revenue_variance', label: 'Revenue(Variance%)' },
 ];
 
+
