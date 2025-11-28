@@ -14,9 +14,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * 대시보드(Dashboard) 관련 API 컨트롤러
@@ -46,6 +43,8 @@ import java.util.List;
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
 public class DashboardController {
+
+    private final com.example.app.api.dashboard.service.DashboardService dashboardService;
 
     /**
      * 대시보드 개요 데이터 조회
@@ -100,10 +99,8 @@ public class DashboardController {
         // groupBy 유효성 검증 및 정규화
         String normalizedGroupBy = validateAndNormalizeGroupBy(groupBy);
 
-        // TODO: 나중에 실제 DB/AI 연동 시 이 부분만 교체
-        // 예: DashboardOverviewResponse response = dashboardService.getOverview(fromDate, toDate, normalizedGroupBy);
-        
-        DashboardOverviewResponse response = createDummyData(fromDate, toDate, normalizedGroupBy);
+        // 실제 데이터베이스에서 데이터 조회
+        DashboardOverviewResponse response = dashboardService.getOverview(fromDate, toDate, normalizedGroupBy);
         
         return ResponseEntity.ok(response);
     }
@@ -152,252 +149,4 @@ public class DashboardController {
         return normalized;
     }
 
-    /**
-     * 더미 데이터 생성
-     * 
-     * from, to, groupBy 파라미터에 따라 그럴듯한 더미 데이터를 생성합니다.
-     * 나중에 실제 DB/AI 연동 시 이 메서드를 제거하거나
-     * DashboardService로 교체하면 됩니다.
-     * 
-     * @param from 시작일
-     * @param to 종료일
-     * @param groupBy 집계 단위 (DAY, WEEK, MONTH)
-     * @return 더미 대시보드 데이터
-     */
-    private DashboardOverviewResponse createDummyData(LocalDate from, LocalDate to, String groupBy) {
-        // 기간에 따라 요약 카드 값 계산 (기간이 길수록 값이 커지도록)
-        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
-        double salesMultiplier = 1.0 + (daysBetween * 0.1);
-        double orderMultiplier = 1.0 + (daysBetween * 0.05);
-        double customerMultiplier = 1.0 + (daysBetween * 0.03);
-        
-        // 요약 카드 데이터 (상단 4개 카드) - 기간 조건에 따라 값이 변동
-        List<SummaryCard> summaryCards = Arrays.asList(
-            SummaryCard.builder()
-                .label("총 매출")
-                .value(12500000.0 * salesMultiplier)
-                .unit("원")
-                .build(),
-            SummaryCard.builder()
-                .label("총 주문 수")
-                .value(342.0 * orderMultiplier)
-                .unit("건")
-                .build(),
-            SummaryCard.builder()
-                .label("신규 고객")
-                .value(128.0 * customerMultiplier)
-                .unit("명")
-                .build(),
-            SummaryCard.builder()
-                .label("평균 주문 금액")
-                .value(36549.0 * (1.0 + (Math.random() * 0.1)))
-                .unit("원")
-                .build()
-        );
-
-        // 라인 차트 데이터 (기간별 매출 추이)
-        ChartData lineChart = createLineChartData(from, to, groupBy);
-
-        // 바 차트 데이터 (재고 현황 - 기간 조건에 따라 다르게 생성)
-        ChartData barChart = createInventoryBarChartData(from, to, groupBy);
-
-        // 도넛 차트 데이터 (비가동 실적 - 기간 조건에 따라 다르게 생성)
-        ChartData doughnutChart = createDowntimeDoughnutChartData(from, to, groupBy);
-
-        return DashboardOverviewResponse.builder()
-            .summaryCards(summaryCards)
-            .lineChart(lineChart)
-            .barChart(barChart)
-            .doughnutChart(doughnutChart)
-            .build();
-    }
-
-    /**
-     * 라인 차트 데이터 생성
-     * 
-     * from, to, groupBy에 따라 날짜 라벨과 데이터를 생성합니다.
-     * 
-     * @param from 시작일
-     * @param to 종료일
-     * @param groupBy 집계 단위 (DAY, WEEK, MONTH)
-     * @return 라인 차트 데이터
-     */
-    private ChartData createLineChartData(LocalDate from, LocalDate to, String groupBy) {
-        List<String> labels = new ArrayList<>();
-        List<Double> data = new ArrayList<>();
-        
-        DateTimeFormatter formatter;
-        String title;
-        long baseValue = 1000000L; // 기본값
-        
-        switch (groupBy) {
-            case "DAY":
-                formatter = DateTimeFormatter.ofPattern("MM-dd");
-                title = String.format("%s ~ %s 일별 매출 추이", 
-                        from.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                        to.format(DateTimeFormatter.ISO_LOCAL_DATE));
-                
-                LocalDate current = from;
-                int index = 0;
-                while (!current.isAfter(to)) {
-                    labels.add(current.format(formatter));
-                    // 더미 데이터: 기본값 + 인덱스 * 랜덤 변동
-                    double value = baseValue + (index * 100000) + (Math.random() * 500000);
-                    data.add(value);
-                    current = current.plusDays(1);
-                    index++;
-                }
-                break;
-                
-            case "WEEK":
-                formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                title = String.format("%s ~ %s 주별 매출 추이", 
-                        from.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                        to.format(DateTimeFormatter.ISO_LOCAL_DATE));
-                
-                LocalDate weekStart = from;
-                int weekIndex = 0;
-                while (!weekStart.isAfter(to)) {
-                    LocalDate weekEnd = weekStart.plusDays(6);
-                    if (weekEnd.isAfter(to)) {
-                        weekEnd = to;
-                    }
-                    labels.add(String.format("%s ~ %s", 
-                            weekStart.format(formatter),
-                            weekEnd.format(formatter)));
-                    // 더미 데이터: 주별로 더 큰 값
-                    double weekValue = baseValue * 7 + (weekIndex * 500000) + (Math.random() * 2000000);
-                    data.add(weekValue);
-                    weekStart = weekStart.plusWeeks(1);
-                    weekIndex++;
-                }
-                break;
-                
-            case "MONTH":
-                formatter = DateTimeFormatter.ofPattern("yyyy-MM");
-                title = String.format("%s ~ %s 월별 매출 추이", 
-                        from.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                        to.format(DateTimeFormatter.ISO_LOCAL_DATE));
-                
-                LocalDate monthStart = from.withDayOfMonth(1);
-                int monthIndex = 0;
-                while (!monthStart.isAfter(to)) {
-                    labels.add(monthStart.format(formatter));
-                    // 더미 데이터: 월별로 더 큰 값
-                    double monthValue = baseValue * 30 + (monthIndex * 2000000) + (Math.random() * 5000000);
-                    data.add(monthValue);
-                    monthStart = monthStart.plusMonths(1);
-                    monthIndex++;
-                }
-                break;
-                
-            default:
-                // 기본값 (DAY와 동일)
-                formatter = DateTimeFormatter.ofPattern("MM-dd");
-                title = "매출 추이";
-                labels.add("데이터 없음");
-                data.add(0.0);
-        }
-        
-        return ChartData.builder()
-                .title(title)
-                .labels(labels)
-                .datasets(Arrays.asList(
-                        ChartDataset.builder()
-                                .label("매출")
-                                .data(data)
-                                .build()
-                ))
-                .build();
-    }
-
-    /**
-     * 재고 현황 바 차트 데이터 생성
-     * 
-     * 기간 조건에 따라 재고 현황 데이터를 생성합니다.
-     * 
-     * @param from 시작일
-     * @param to 종료일
-     * @param groupBy 집계 단위 (DAY, WEEK, MONTH)
-     * @return 재고 현황 바 차트 데이터
-     */
-    private ChartData createInventoryBarChartData(LocalDate from, LocalDate to, String groupBy) {
-        // 기간에 따라 기본 재고 값 계산 (기간이 길수록 값이 커지도록)
-        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
-        double baseInventory = 1000.0 + (daysBetween * 10);
-        
-        // 더미 데이터: 기간에 따라 변동
-        double prevMonthInventory = baseInventory;
-        double inbound = baseInventory * 2.3 + (Math.random() * 500);
-        double domesticShipment = -(baseInventory * 0.9 + (Math.random() * 200));
-        double exportShipment = -(baseInventory * 0.6 + (Math.random() * 150));
-        double other = -(baseInventory * 0.1 + (Math.random() * 50));
-        double monthEndInventory = prevMonthInventory + inbound + domesticShipment + exportShipment + other;
-        
-        return ChartData.builder()
-            .title(String.format("재고 현황 (%s ~ %s)", 
-                    from.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                    to.format(DateTimeFormatter.ISO_LOCAL_DATE)))
-            .labels(Arrays.asList("전월재고", "입고", "출하내수", "출하수출", "기타", "월말재고"))
-            .datasets(Arrays.asList(
-                ChartDataset.builder()
-                    .label("재고 현황 (MT)")
-                    .data(Arrays.asList(
-                        prevMonthInventory,
-                        inbound,
-                        domesticShipment,
-                        exportShipment,
-                        other,
-                        monthEndInventory
-                    ))
-                    .build()
-            ))
-            .build();
-    }
-
-    /**
-     * 비가동 실적 도넛 차트 데이터 생성
-     * 
-     * 기간 조건에 따라 비가동 실적 데이터를 생성합니다.
-     * 
-     * @param from 시작일
-     * @param to 종료일
-     * @param groupBy 집계 단위 (DAY, WEEK, MONTH)
-     * @return 비가동 실적 도넛 차트 데이터
-     */
-    private ChartData createDowntimeDoughnutChartData(LocalDate from, LocalDate to, String groupBy) {
-        // 기간에 따라 기본 비가동 값 계산
-        long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
-        double baseDowntime = 5.0 + (daysBetween * 0.1);
-        
-        // 더미 데이터: 기간에 따라 변동
-        double plan = baseDowntime;
-        double actual = baseDowntime * 1.2 + (Math.random() * 2);
-        double line1 = baseDowntime * 1.1 + (Math.random() * 1);
-        double line2 = baseDowntime * 0.5 + (Math.random() * 0.5);
-        double line3 = baseDowntime * 1.0 + (Math.random() * 1);
-        double line4 = baseDowntime * 1.3 + (Math.random() * 1.5);
-        double line5 = baseDowntime * 1.0 + (Math.random() * 1);
-        
-        return ChartData.builder()
-            .title(String.format("비가동 실적 (%s ~ %s)", 
-                    from.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                    to.format(DateTimeFormatter.ISO_LOCAL_DATE)))
-            .labels(Arrays.asList("계획", "실적", "1Line", "2Line", "3Line", "4Line", "5Line"))
-            .datasets(Arrays.asList(
-                ChartDataset.builder()
-                    .label("계획")
-                    .data(Arrays.asList(plan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
-                    .build(),
-                ChartDataset.builder()
-                    .label("실적")
-                    .data(Arrays.asList(0.0, actual, 0.0, 0.0, 0.0, 0.0, 0.0))
-                    .build(),
-                ChartDataset.builder()
-                    .label("라인별")
-                    .data(Arrays.asList(0.0, 0.0, line1, line2, line3, line4, line5))
-                    .build()
-            ))
-            .build();
-    }
 }

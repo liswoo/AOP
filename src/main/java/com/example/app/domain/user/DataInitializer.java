@@ -1,10 +1,17 @@
 package com.example.app.domain.user;
 
+import com.example.app.domain.dashboard.DashboardMetricRepository;
+import com.example.app.domain.dw.*;
+import com.example.app.domain.etl.EtlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Random;
 
 /**
  * 애플리케이션 시작 시 초기 데이터를 생성하는 컴포넌트
@@ -30,6 +37,15 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserService userService;
     private final RoleRepository roleRepository;
+    
+    // DW 레이어
+    private final DimDateRepository dimDateRepository;
+    private final FactSalesRepository factSalesRepository;
+    private final FactInventoryRepository factInventoryRepository;
+    private final FactDowntimeRepository factDowntimeRepository;
+    
+    // ETL 서비스
+    private final EtlService etlService;
 
     /**
      * 애플리케이션 시작 시 실행되는 메서드
@@ -51,8 +67,14 @@ public class DataInitializer implements CommandLineRunner {
         // 2. 초기 관리자 계정 생성
         createAdminUser();
 
-        // 3. 테스트용 일반 사용자 100명 생성 (개발/테스트 환경용)
-        createTestUsers();
+        // 3. 초기 일반 사용자 계정 생성
+        createUser();
+
+        // 4. DW 초기 데이터 생성
+        createDwData();
+
+        // 5. ETL 프로세스 실행 (DW → Mart → Dashboard)
+        runEtlProcess();
 
         log.info("초기 데이터 생성이 완료되었습니다.");
     }
@@ -142,67 +164,186 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     /**
-     * 테스트용 일반 사용자 100명 생성
+     * 초기 일반 사용자 계정을 생성합니다.
      * 
-     * 개발/테스트 환경에서 사용할 목적으로 일반 사용자 100명을 생성합니다.
-     * 
-     * 생성 규칙:
-     * - username: user01, user02, ..., user100
-     * - password: password1234 (모두 동일)
-     * - name: 사용자01, 사용자02, ..., 사용자100
-     * - email: user01@example.com, user02@example.com, ..., user100@example.com
+     * 일반 사용자 계정 정보:
+     * - username: "user"
+     * - password: "1234" (BCrypt로 암호화됨)
      * - role: USER
-     * - enabled: true
      * 
-     * 이미 존재하는 사용자는 건너뜁니다.
+     * 이미 "user" 사용자가 존재하면 생성하지 않습니다.
      */
-    private void createTestUsers() {
-        log.info("테스트용 일반 사용자 100명 생성을 시작합니다...");
+    private void createUser() {
+        log.info("초기 일반 사용자 계정을 확인하고 생성합니다...");
 
+        // "user" 사용자가 이미 존재하는지 확인
+        if (userService.findByUsername("user").isPresent()) {
+            log.info("일반 사용자 계정이 이미 존재합니다. 초기 계정 생성을 건너뜁니다.");
+            return;
+        }
+
+        // USER 역할 조회
+        Role userRole = roleRepository.findByCode(RoleType.USER.getCode())
+                .orElseThrow(() -> new IllegalStateException(
+                        "USER 역할이 존재하지 않습니다. 역할을 먼저 생성해야 합니다."));
+
+        // 일반 사용자 계정 생성
+        User normalUser = User.builder()
+                .username("user")
+                .password("1234")  // 평문 비밀번호 (UserService에서 BCrypt로 암호화됨)
+                .email("user@example.com")
+                .name("일반 사용자")
+                .active(true)
+                .build();
+
+        // USER 역할 할당
+        normalUser.addRole(userRole);
+
+        // 사용자 저장 (비밀번호는 UserService.createUser()에서 자동으로 BCrypt로 암호화됨)
+        userService.createUser(normalUser);
+
+        log.info("초기 일반 사용자 계정이 생성되었습니다.");
+        log.info("  - 사용자명: user");
+        log.info("  - 비밀번호: 1234");
+        log.info("  - 역할: USER");
+        log.warn("⚠️  운영 환경에서는 반드시 초기 비밀번호를 변경하세요!");
+    }
+
+    /**
+     * DW 초기 데이터 생성
+     * 
+     * 최근 30일간의 샘플 데이터를 DW 테이블에 생성합니다.
+     * 실제 운영 환경에서는 원천 시스템에서 데이터를 가져와야 합니다.
+     */
+    private void createDwData() {
+        log.info("DW 초기 데이터 생성을 시작합니다...");
+
+        // 이미 데이터가 있는지 확인
+        long existingCount = factSalesRepository.count();
+        if (existingCount > 0) {
+            log.info("DW 데이터가 이미 존재합니다. ({}건) 초기 데이터 생성을 건너뜁니다.", existingCount);
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(29); // 최근 30일
+        Random random = new Random();
         int createdCount = 0;
-        int skippedCount = 0;
 
-        // 1부터 100까지 반복
-        for (int i = 1; i <= 100; i++) {
-            String username = String.format("user%02d", i); // user01, user02, ..., user100
-            String email = String.format("user%02d@example.com", i);
-            String name = String.format("사용자%02d", i);
+        // 최근 30일간 데이터 생성
+        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
+            // 1. DimDate 생성 (날짜 차원 테이블)
+            DimDate dimDate = createOrGetDimDate(date);
+            createdCount++;
 
-            // 이미 존재하는 사용자인지 확인
-            if (userService.findByUsername(username).isPresent()) {
-                skippedCount++;
-                continue; // 이미 존재하면 건너뜀
+            // 2. FactSales 생성 (매출 팩트)
+            double salesAmount = 1000000.0 + (random.nextDouble() * 500000);
+            int salesQuantity = 10 + random.nextInt(50);
+            int orderCount = 1 + random.nextInt(5);
+            int customerCount = random.nextInt(10);
+
+            FactSales factSales = FactSales.builder()
+                    .date(dimDate)
+                    .transactionDate(date)
+                    .salesAmount(salesAmount)
+                    .quantity(salesQuantity)
+                    .orderCount(orderCount)
+                    .customerCount(customerCount)
+                    .build();
+            factSalesRepository.save(factSales);
+            createdCount++;
+
+            // 3. FactInventory 생성 (재고 팩트)
+            String[] inventoryTypes = {"전월재고", "입고", "출하내수", "출하수출", "기타", "월말재고"};
+            for (String inventoryType : inventoryTypes) {
+                double inventoryQuantity = 1000.0 + (random.nextDouble() * 500);
+                if (inventoryType.equals("출하내수") || inventoryType.equals("출하수출") || inventoryType.equals("기타")) {
+                    inventoryQuantity = -inventoryQuantity; // 출하는 음수
+                }
+
+                FactInventory factInventory = FactInventory.builder()
+                        .date(dimDate)
+                        .transactionDate(date)
+                        .inventoryType(inventoryType)
+                        .quantity(inventoryQuantity)
+                        .build();
+                factInventoryRepository.save(factInventory);
+                createdCount++;
             }
 
-            try {
-                // UserCreateRequest 생성
-                com.example.app.api.admin.dto.UserCreateRequest request = 
-                        new com.example.app.api.admin.dto.UserCreateRequest();
-                request.setUsername(username);
-                request.setPassword("password1234"); // 모든 사용자 동일한 비밀번호
-                request.setEmail(email);
-                request.setName(name);
-                request.setRole("USER");
+            // 4. FactDowntime 생성 (비가동 팩트)
+            String[] lineNames = {"계획", "실적", "1Line", "2Line", "3Line", "4Line", "5Line"};
+            for (String lineName : lineNames) {
+                double downtimeHours = 5.0 + (random.nextDouble() * 3);
+                double downtimeCost = downtimeHours * 10.0; // 시간당 10만원 가정
 
-                // 사용자 생성
-                userService.createUser(request);
+                FactDowntime factDowntime = FactDowntime.builder()
+                        .date(dimDate)
+                        .transactionDate(date)
+                        .lineName(lineName)
+                        .downtimeHours(downtimeHours)
+                        .downtimeCost(downtimeCost)
+                        .build();
+                factDowntimeRepository.save(factDowntime);
                 createdCount++;
-
-                // 10명마다 로그 출력 (너무 많은 로그 방지)
-                if (i % 10 == 0) {
-                    log.info("테스트 사용자 생성 진행 중... {}/100", i);
-                }
-            } catch (Exception e) {
-                log.warn("테스트 사용자 생성 실패 - username: {}, error: {}", username, e.getMessage());
             }
         }
 
-        log.info("테스트용 일반 사용자 생성 완료: 생성 {}명, 건너뜀 {}명", createdCount, skippedCount);
-        if (createdCount > 0) {
-            log.info("테스트 사용자 로그인 정보:");
-            log.info("  - 사용자명: user01 ~ user100");
-            log.info("  - 비밀번호: password1234 (모두 동일)");
-            log.info("  - 역할: USER");
+        log.info("DW 초기 데이터 생성 완료: {}건", createdCount);
+        log.info("  - 기간: {} ~ {}", startDate, today);
+        log.info("  - 테이블: DimDate, FactSales, FactInventory, FactDowntime");
+    }
+
+    /**
+     * 날짜 차원 테이블 생성 또는 조회
+     */
+    private DimDate createOrGetDimDate(LocalDate date) {
+        return dimDateRepository.findByDate(date)
+                .orElseGet(() -> {
+                    int year = date.getYear();
+                    int month = date.getMonthValue();
+                    int day = date.getDayOfMonth();
+                    int quarter = (month - 1) / 3 + 1;
+                    int week = date.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear());
+                    int dayOfWeek = date.getDayOfWeek().getValue();
+                    String dayName = date.getDayOfWeek().toString();
+                    boolean isWeekend = dayOfWeek >= 6;
+                    String yearMonth = date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+                    DimDate dimDate = DimDate.builder()
+                            .date(date)
+                            .year(year)
+                            .quarter(quarter)
+                            .month(month)
+                            .week(week)
+                            .day(day)
+                            .dayOfWeek(dayOfWeek)
+                            .dayName(dayName)
+                            .isWeekend(isWeekend)
+                            .isHoliday(false)
+                            .yearMonth(yearMonth)
+                            .build();
+                    return dimDateRepository.save(dimDate);
+                });
+    }
+
+    /**
+     * ETL 프로세스 실행
+     * 
+     * DW → Mart → Dashboard 순서로 데이터를 이동시킵니다.
+     */
+    private void runEtlProcess() {
+        log.info("ETL 프로세스 실행을 시작합니다...");
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(29); // 최근 30일
+
+        try {
+            etlService.runEtlProcess(startDate, today);
+            log.info("ETL 프로세스 실행 완료");
+        } catch (Exception e) {
+            log.error("ETL 프로세스 실행 중 오류 발생: {}", e.getMessage(), e);
+            // ETL 실패해도 애플리케이션은 계속 실행되도록 함
         }
     }
 }

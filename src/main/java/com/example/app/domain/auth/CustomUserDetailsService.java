@@ -1,6 +1,5 @@
 package com.example.app.domain.auth;
 
-import com.example.app.domain.user.Role;
 import com.example.app.domain.user.User;
 import com.example.app.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
