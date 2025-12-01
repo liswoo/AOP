@@ -5,8 +5,101 @@
  * react-grid-layout과 Chart.js 높이를 맞추기 위한 처리
  */
 
+/* 대시보드 페이지 컨테이너 */
+.dashboard-page-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 대시보드 페이지 제목 - 모바일 대응 */
+.dashboard-page-container h1 {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 대시보드 필터 바 - 모바일 대응 */
+@media (max-width: 768px) {
+  .dashboard-page-container > div:nth-child(2) {
+    flex-wrap: wrap !important;
+    padding: 12px !important;
+  }
+}
+
+/* 그리드 컨테이너 (남은 공간을 채움) */
+.dashboard-grid-container {
+  display: flex;
+  flex-direction: column;
+}
+
 .dashboard-grid {
-  min-height: 400px;
+  /* 기본 스타일 */
+}
+
+/* react-grid-layout 컨테이너 */
+.react-grid-layout {
+  /* 기본값 유지 */
+}
+
+/* ===== 데스크톱 (769px 이상): 뷰포트에 맞춤, 스크롤 없음 ===== */
+@media (min-width: 769px) {
+  .dashboard-page-container {
+    height: 100%;
+    overflow: hidden;
+    min-height: 0;
+  }
+  
+  .dashboard-grid-container {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  
+  .dashboard-grid {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+/* ===== 모바일 (768px 이하): 자연스러운 높이, 세로 스크롤 허용 ===== */
+@media (max-width: 768px) {
+  .dashboard-page-container {
+    height: auto !important;
+    min-height: auto !important;
+    overflow-x: hidden !important; /* 가로 스크롤 방지 */
+    overflow-y: visible !important;
+    max-width: 100vw;
+    padding: 0 8px;
+    box-sizing: border-box;
+  }
+  
+  .dashboard-grid-container {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .dashboard-grid {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .react-grid-layout {
+    height: auto !important;
+    width: 100% !important;
+  }
+  
+  .react-grid-item {
+    width: calc(100% - 24px) !important; /* 마진 고려 */
+  }
 }
 
 /* react-grid-layout 아이템 스타일 */

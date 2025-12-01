@@ -61,3 +61,4 @@ public class FactDowntime extends BaseEntity {
     private String remarks;
 }
 
+

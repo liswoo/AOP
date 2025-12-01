@@ -25,3 +25,4 @@ public interface MartWeeklySalesRepository extends JpaRepository<MartWeeklySales
             @Param("to") LocalDate to);
 }
 
+

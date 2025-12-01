@@ -85,3 +85,4 @@ public class MartWeeklySales extends BaseEntity {
     private LocalDate aggregatedDate;
 }
 
+

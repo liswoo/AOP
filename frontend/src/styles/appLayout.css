@@ -7,7 +7,6 @@
 
 /* 전체 앱 루트 컨테이너 */
 .app-root {
-  min-height: 100vh;
   background: radial-gradient(circle at top, #111827 0, #020617 60%);
   color: #e5e7eb;
   display: flex;
@@ -17,8 +16,6 @@
 /* 메인 레이아웃 (사이드바 + 컨텐츠) */
 .app-body {
   display: flex;
-  flex: 1;
-  min-height: calc(100vh - 64px); /* header 높이만큼 빼기 */
   position: relative;
 }
 
@@ -26,8 +23,53 @@
 .app-main {
   flex: 1;
   padding: 24px 32px;
-  overflow-x: hidden;
   transition: margin-left 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 데스크톱 (769px 이상): 뷰포트에 맞춤, 스크롤 없음 ===== */
+@media (min-width: 769px) {
+  .app-root {
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .app-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  
+  .app-main {
+    overflow: hidden;
+    min-height: 0;
+  }
+}
+
+/* ===== 모바일 (768px 이하): 자연스러운 높이, 스크롤 허용 ===== */
+@media (max-width: 768px) {
+  .app-root {
+    min-height: 100vh;
+    height: auto !important;
+    overflow: visible !important;
+    background: radial-gradient(circle at top, #111827 0, #020617 60%) !important; /* 배경 명시 */
+  }
+  
+  .app-body {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .app-main {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding-bottom: 20px; /* 하단 여유 공간 */
+  }
 }
 
 /* 사이드바 기본 스타일 */

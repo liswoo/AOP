@@ -45,3 +45,4 @@ public interface MartDailySalesRepository extends JpaRepository<MartDailySales, 
             @Param("to") LocalDate to);
 }
 
+

@@ -49,3 +49,4 @@ public class MartDailyInventory extends BaseEntity {
     private LocalDate aggregatedDate;
 }
 
+

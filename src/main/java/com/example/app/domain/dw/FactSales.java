@@ -81,3 +81,4 @@ public class FactSales extends BaseEntity {
     private String remarks;
 }
 
+

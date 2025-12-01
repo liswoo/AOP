@@ -48,3 +48,4 @@ public interface FactSalesRepository extends JpaRepository<FactSales, Long> {
             @Param("to") LocalDate to);
 }
 
+

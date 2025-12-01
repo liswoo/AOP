@@ -2,21 +2,62 @@
  * 전역 CSS 스타일
  * 
  * 애플리케이션 전체에 적용되는 기본 스타일을 정의합니다.
+ * 데스크톱: 웹앱 느낌을 위해 외부 스크롤 제거
+ * 모바일: 스크롤 허용
  */
 
 * {
   box-sizing: border-box;
 }
 
-body {
+html, body, #root {
   margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* 데스크톱 (769px 이상): 뷰포트 고정, 스크롤 제거 */
+@media (min-width: 769px) {
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+/* 모바일 (768px 이하): 자연스러운 높이, 스크롤 허용 */
+@media (max-width: 768px) {
+  html {
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: #020617; /* 배경색 명시 */
+  }
+  
+  body {
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: #020617; /* 배경색 명시 */
+  }
+  
+  #root {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+    background-color: #020617; /* 배경색 명시 */
+  }
+}
+
+body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
-  color: #333;
+  background-color: #020617; /* 다크 테마 배경 */
+  color: #e5e7eb;
 }
 
 code {

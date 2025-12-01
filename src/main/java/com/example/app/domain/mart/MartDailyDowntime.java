@@ -55,3 +55,4 @@ public class MartDailyDowntime extends BaseEntity {
     private LocalDate aggregatedDate;
 }
 
+

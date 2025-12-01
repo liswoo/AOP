@@ -23,3 +23,4 @@ public interface DimDateRepository extends JpaRepository<DimDate, Long> {
     boolean existsByDate(LocalDate date);
 }
 
+

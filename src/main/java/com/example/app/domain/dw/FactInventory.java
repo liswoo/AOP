@@ -55,3 +55,4 @@ public class FactInventory extends BaseEntity {
     private String remarks;
 }
 
+

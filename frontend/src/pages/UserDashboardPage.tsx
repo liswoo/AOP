@@ -80,9 +80,16 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 /**
  * 행 높이 상수 (그리드 단위)
  * 
- * react-grid-layout의 rowHeight와 일치시켜야 합니다.
+ * react-grid-layout의 각 카드 높이를 결정하는 그리드 유닛입니다.
+ * 각 카드의 실제 높이는 ROW_HEIGHT * rowHeight(px)로 계산됩니다.
  */
 const ROW_HEIGHT = 6;
+
+/**
+ * 그리드 마진 상수
+ * react-grid-layout의 margin prop과 동일해야 합니다.
+ */
+const GRID_MARGIN = 12;
 
 /**
  * 활성화된 대시보드 카드 목록을 받아서
@@ -98,20 +105,30 @@ const ROW_HEIGHT = 6;
  * 이렇게 정해진 규칙으로만 레이아웃을 자동 재배치하여
  * 화면 공간을 효율적으로 쓰면서도
  * 사용자가 레이아웃 변화를 예측할 수 있게 만듭니다.
+ * 
+ * @param cols - 그리드 열 수 (기본 12, 모바일에서는 1 또는 2)
  */
-function computeLayout(activeCards: DashboardCardId[]): Layout[] {
+function computeLayout(activeCards: DashboardCardId[], cols: number = 12): Layout[] {
   const n = activeCards.length;
 
-  // 카드 개수에 따라 컬럼 수 결정
-  const colCount =
-    n <= 1 ? 1 :
-    n === 2 ? 2 :
-    n === 3 ? 3 :
-    n === 4 ? 2 :
-    3; // 5~6개는 3열
+  // 카드 개수와 그리드 열 수에 따라 컬럼 수 결정
+  let colCount: number;
+  if (cols <= 2) {
+    // 모바일 (xxs, xs): 1열 (세로 스택 허용)
+    colCount = 1;
+  } else {
+    // 데스크톱/태블릿 (lg, md, sm): 2행 3열 유지
+    // sm 브레이크포인트(768px) 이상에서는 항상 3열로 처리
+    colCount =
+      n <= 1 ? 1 :
+      n === 2 ? 2 :
+      n === 3 ? 3 :
+      n === 4 ? 2 :
+      3; // 5~6개는 3열
+  }
 
-  // 각 카드의 너비 (12열 그리드 기준)
-  const w = 12 / colCount;
+  // 각 카드의 너비 (그리드 열 수 기준)
+  const w = Math.floor(cols / colCount);
   // 각 카드의 높이 (공통 값)
   const h = ROW_HEIGHT;
 
@@ -184,6 +201,12 @@ const UserDashboardPage: React.FC = () => {
   // URL 쿼리 파라미터 관리
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  
+  // 동적 rowHeight 상태 (뷰포트 높이 기반으로 계산)
+  const [responsiveRowHeight, setResponsiveRowHeight] = useState(35);
+  
+  // 모바일 여부 상태 (768px 이하)
+  const [isMobile, setIsMobile] = useState(false);
 
   // 필터 상태
   const [from, setFrom] = useState<string | null>(null);
@@ -243,6 +266,8 @@ const UserDashboardPage: React.FC = () => {
   const [isDockTargetActive, setIsDockTargetActive] = useState(false);
   // 전역 마우스 위치 추적용 ref
   const currentMouseYRef = useRef<number | null>(null);
+  // 드래그 시작 시 원래 위치 저장용 ref
+  const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   // 도킹 바 DOM을 참조하기 위한 ref
   const dockBarRef = useRef<HTMLDivElement | null>(null);
@@ -265,6 +290,160 @@ const UserDashboardPage: React.FC = () => {
       window.removeEventListener('keydown', handleEscape);
     };
   }, [aiAnalysisCardId]);
+
+  // 그리드 컨테이너 ref (실제 높이 측정용)
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const gridLayoutRef = useRef<HTMLDivElement>(null);
+  
+  /**
+   * 실제 DOM 요소를 측정하여 rowHeight 계산 (ResizeObserver 사용)
+   * 
+   * 데스크톱 (768px 이상): 그리드 컨테이너의 실제 높이를 측정하여 계산
+   * 모바일 (768px 미만): 기본 rowHeight 사용, 스크롤 허용
+   */
+  useEffect(() => {
+    const viewportWidth = window.innerWidth;
+    const mobile = viewportWidth <= 768;
+    setIsMobile(mobile);
+    
+    // 모바일에서는 더 큰 rowHeight 사용
+    if (mobile) {
+      setResponsiveRowHeight(50);
+      return;
+    }
+    
+    // 상수 정의
+    const gridMarginBetweenRows = GRID_MARGIN;
+    const totalGridUnits = 2 * ROW_HEIGHT; // 12
+    
+    // 조정 타이머 ref (debounce용)
+    let adjustmentTimer: NodeJS.Timeout | null = null;
+    
+    // 데스크톱: ResizeObserver로 그리드 컨테이너 높이 변화 감지
+    const calculateRowHeight = (containerHeight: number, isInitial: boolean = false) => {
+      if (containerHeight <= 0) return;
+      
+      // react-grid-layout의 실제 높이 계산
+      // 그리드 총 높이 = (2행 * 6유닛 * rowHeight) + (1개 행간마진 * 12px)
+      // 초기 계산을 정확하게 하기 위해 safetyMargin을 최소화
+      const safetyMargin = isInitial ? 15 : 20; // 초기 계산은 더 정확하게
+      
+      // 사용 가능한 높이에서 안전 마진과 행간 마진을 뺀 값
+      const usableHeight = containerHeight - safetyMargin - gridMarginBetweenRows;
+      const calculatedRowHeight = Math.floor(usableHeight / totalGridUnits);
+      
+      // 최소 20, 최대 60으로 제한 (확대 시에도 꽉 차도록)
+      const finalRowHeight = Math.max(20, Math.min(60, calculatedRowHeight));
+      
+      // 실제 그리드 높이 계산
+      const actualGridHeight = (totalGridUnits * finalRowHeight) + gridMarginBetweenRows;
+      
+      console.log('Dashboard rowHeight 계산 (실제 측정):', {
+        containerHeight,
+        usableHeight,
+        calculatedRowHeight,
+        finalRowHeight,
+        actualGridHeight,
+        safetyMargin,
+        isInitial,
+        fits: actualGridHeight <= containerHeight,
+        remainingSpace: containerHeight - actualGridHeight
+      });
+      
+      setResponsiveRowHeight(finalRowHeight);
+    };
+    
+    // ResizeObserver 설정
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const containerHeight = entry.contentRect.height;
+        // 초기 계산 (정확하게)
+        calculateRowHeight(containerHeight, false);
+        
+        // 이전 타이머 취소 (debounce)
+        if (adjustmentTimer) {
+          clearTimeout(adjustmentTimer);
+        }
+        
+        // 실제 그리드 아이템들의 위치를 측정하여 미세 조정 (debounce)
+        adjustmentTimer = setTimeout(() => {
+          const gridItems = document.querySelectorAll('.react-grid-item');
+          if (gridItems.length > 0) {
+            let maxBottom = 0;
+            gridItems.forEach((item) => {
+              const rect = (item as HTMLElement).getBoundingClientRect();
+              const bottom = rect.bottom;
+              if (bottom > maxBottom) {
+                maxBottom = bottom;
+              }
+            });
+            
+            // 그리드 컨테이너의 상단 위치
+            const gridContainer = gridContainerRef.current;
+            if (gridContainer) {
+              const containerRect = gridContainer.getBoundingClientRect();
+              const containerTop = containerRect.top;
+              const actualGridHeight = maxBottom - containerTop;
+              
+              // 컨테이너 높이와 비교 (약간의 여유 허용: 5px)
+              const tolerance = 5;
+              const needsAdjustment = actualGridHeight > (containerHeight + tolerance);
+              
+              console.log('실제 그리드 높이 (아이템 측정):', {
+                containerHeight,
+                actualGridHeight,
+                maxBottom,
+                containerTop,
+                difference: containerHeight - actualGridHeight,
+                needsAdjustment,
+                tolerance
+              });
+              
+              // 실제 그리드가 컨테이너보다 크면 rowHeight 조정 (미세 조정만)
+              if (needsAdjustment) {
+                // 함수형 업데이트로 최신 값 사용
+                setResponsiveRowHeight((currentRowHeight) => {
+                  const excess = actualGridHeight - containerHeight;
+                  // 초과분을 12로 나눠서 rowHeight 조정
+                  const adjustment = Math.ceil(excess / totalGridUnits);
+                  const newRowHeight = Math.max(20, currentRowHeight - adjustment);
+                  if (newRowHeight !== currentRowHeight && Math.abs(newRowHeight - currentRowHeight) >= 1) {
+                    console.log('rowHeight 미세 조정:', { 
+                      currentRowHeight, 
+                      newRowHeight, 
+                      excess, 
+                      adjustment,
+                      expectedNewHeight: (totalGridUnits * newRowHeight) + gridMarginBetweenRows
+                    });
+                    return newRowHeight;
+                  }
+                  return currentRowHeight;
+                });
+              }
+            }
+          }
+        }, 200); // 300ms → 200ms로 단축
+      }
+    });
+    
+    // 그리드 컨테이너 관찰 시작
+    if (gridContainerRef.current) {
+      resizeObserver.observe(gridContainerRef.current);
+      // 초기 높이 계산 (약간의 지연으로 DOM 렌더링 완료 대기)
+      setTimeout(() => {
+        if (gridContainerRef.current) {
+          calculateRowHeight(gridContainerRef.current.clientHeight, true); // 초기 계산은 더 정확하게
+        }
+      }, 150);
+    }
+    
+    return () => {
+      if (adjustmentTimer) {
+        clearTimeout(adjustmentTimer);
+      }
+      resizeObserver.disconnect();
+    };
+  }, [overview]); // overview가 로드되면 재계산
 
   /**
    * URL 쿼리 파라미터에서 필터 값 초기화
@@ -905,23 +1084,56 @@ const UserDashboardPage: React.FC = () => {
     });
   };
 
+  // 현재 브레이크포인트에 맞는 cols 계산
+  const getCurrentCols = (): number => {
+    const width = window.innerWidth;
+    if (width >= 1200) return 12; // lg
+    if (width >= 996) return 12; // md
+    if (width >= 768) return 6; // sm
+    if (width >= 480) return 2; // xs
+    return 2; // xxs
+  };
+
+  // 현재 브레이크포인트 상태
+  const [currentCols, setCurrentCols] = useState(getCurrentCols());
+
   /**
-   * 활성 카드 목록을 기반으로 레이아웃 계산
+   * 활성 카드 목록과 브레이크포인트를 기반으로 레이아웃 계산
    * 
-   * activeCards가 변경될 때마다 자동으로 레이아웃을 재계산합니다.
+   * activeCards나 브레이크포인트가 변경될 때마다 자동으로 레이아웃을 재계산합니다.
    * 확대 상태가 아닐 때만 자동 계산된 레이아웃을 사용합니다.
+   * 
+   * 모바일 진입 전(sm 이상)에서는 항상 2행 3열을 유지하기 위해 12열로 처리합니다.
    */
   const baseLayout = useMemo(
-    () => computeLayout(activeCards),
-    [activeCards]
+    () => {
+      // sm 이상(768px 이상)에서는 2행 3열 유지를 위해 12열로 처리
+      const layoutCols = currentCols >= 6 ? 12 : currentCols;
+      return computeLayout(activeCards, layoutCols);
+    },
+    [activeCards, currentCols]
   );
 
   // 확대 상태가 아니면 baseLayout 사용, 확대 상태면 layout state 사용
   const [layout, setLayout] = useState<Layout[]>(baseLayout);
 
+  // 창 크기 변경 감지하여 브레이크포인트 업데이트 (onBreakpointChange와 함께 사용)
+  useEffect(() => {
+    const handleResize = () => {
+      const newCols = getCurrentCols();
+      if (newCols !== currentCols) {
+        setCurrentCols(newCols);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [currentCols]);
+
   // baseLayout이 변경되면 layout도 업데이트 (단, 확대 상태가 아닐 때만)
   useEffect(() => {
     if (!expandedGridCardId) {
+      // baseLayout이 변경되었을 때만 업데이트 (브레이크포인트 변경 시에는 위의 handleResize에서 처리)
       setLayout(baseLayout);
     }
   }, [baseLayout, expandedGridCardId]);
@@ -1468,32 +1680,129 @@ const UserDashboardPage: React.FC = () => {
     renderExpandedCardContentRef.current = renderExpandedCardContent;
 
     return (
-      <>
+      <div 
+        ref={gridContainerRef}
+        className="dashboard-grid-container"
+        style={styles.gridContainer}
+      >
         {/* 
           react-grid-layout 설정:
           - isResizable=false: 사용자가 카드 크기를 변경하지 못하게 합니다.
-          - compactType="vertical": 위에서 아래로만 채우기
-          - preventCollision={false}: 카드들이 겹칠 수 있도록 허용 (드래그 중)
+          - compactType 제거: 자동 정렬 비활성화 (2행 3열 고정)
+          - preventCollision={true}: 겹침 방지
+          - onLayoutChange에서 2행 3열 범위 내에서만 이동 허용
           이렇게 해서 "6개의 고정 슬롯 안에서 위치만 바꾸는" 형태의 레이아웃을 구현합니다.
         */}
         <ResponsiveGridLayout
           className="dashboard-grid"
-          layouts={{ lg: layout }}
+          layouts={{
+            lg: layout, // 드래그로 변경된 레이아웃 사용
+            md: layout, // 드래그로 변경된 레이아웃 사용
+            sm: layout, // sm도 2행 3열 유지 (드래그로 변경된 레이아웃 사용)
+            xs: computeLayout(activeCards, 2), // 모바일: 세로 스택 허용
+            xxs: computeLayout(activeCards, 2), // 모바일: 세로 스택 허용
+          }}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
-          rowHeight={45}
-          margin={[16, 16]}
+          cols={{ lg: 12, md: 12, sm: 12, xs: 2, xxs: 2 }} // sm도 12열로 처리 (2행 3열 유지)
+          rowHeight={responsiveRowHeight}
+          margin={[12, 12]}
+          useCSSTransforms={true} // CSS transform 사용으로 성능 향상
+          onBreakpointChange={(newBreakpoint, newCols) => {
+            // 브레이크포인트 변경 시 레이아웃 재설정
+            console.log('브레이크포인트 변경:', { newBreakpoint, newCols, currentCols });
+            if (!expandedGridCardId) {
+              // sm 이상(768px 이상)에서는 2행 3열 유지를 위해 12열로 처리
+              const layoutCols = newCols >= 6 ? 12 : newCols;
+              const newLayout = computeLayout(activeCards, layoutCols);
+              setLayout(newLayout);
+            }
+          }}
           draggableHandle=".dashboard-card-drag-handle"
           draggableCancel=".dashboard-card-actions, .dashboard-card-body"
           isDraggable={!expandedGridCardId} // 확대 상태에서는 드래그 비활성화
           isResizable={false}
-          compactType="vertical"
-          preventCollision={false}
+          compactType="vertical" // 위에서 아래로 자동 정렬
+          preventCollision={false} // 드래그 중 겹침 허용 (위치 교환을 위해)
           onLayoutChange={(currentLayout) => {
             // 확대 상태가 아닐 때만 레이아웃 업데이트
-            // 확대 상태에서는 handleToggleExpand에서 직접 관리
             if (!expandedGridCardId) {
-              setLayout(currentLayout);
+              // sm 이상(768px 이상)에서는 드래그 중에도 2행 3열로 제한 및 위치 교환
+              const isDesktopOrTablet = window.innerWidth >= 768;
+              
+              if (isDesktopOrTablet) {
+                // 2행 3열 범위 내에서만 이동 허용
+                const cols = 12;
+                const cardWidth = cols / 3; // 4
+                const maxY = ROW_HEIGHT; // 6
+                
+                let validatedLayout = currentLayout.map((item) => {
+                  // y는 0 또는 6만 허용 (가장 가까운 행으로 스냅)
+                  let validY: number;
+                  if (item.y <= ROW_HEIGHT / 2) {
+                    validY = 0; // 첫 번째 행
+                  } else {
+                    validY = maxY; // 두 번째 행 (6보다 크면 무조건 6으로 제한)
+                  }
+                  
+                  // x는 0, 4, 8만 허용 (가장 가까운 열로 스냅)
+                  const validX = Math.round(item.x / cardWidth) * cardWidth;
+                  const clampedX = Math.max(0, Math.min(cols - cardWidth, validX));
+                  
+                  return {
+                    ...item,
+                    x: clampedX,
+                    y: validY,
+                    w: cardWidth,
+                    h: ROW_HEIGHT,
+                  };
+                });
+                
+                // 위치 교환: 드래그 중인 카드가 다른 카드의 위치로 이동하면 위치 교환
+                if (draggingItemId && dragStartPositionRef.current) {
+                  const draggingItem = validatedLayout.find(item => item.i === draggingItemId);
+                  if (draggingItem) {
+                    const newPos = { x: draggingItem.x, y: draggingItem.y };
+                    const originalPos = dragStartPositionRef.current;
+                    
+                    // 새로운 위치가 원래 위치와 다르면 (실제로 이동했으면)
+                    if (newPos.x !== originalPos.x || newPos.y !== originalPos.y) {
+                      // 그 위치에 원래 있던 다른 카드 찾기
+                      const targetItem = validatedLayout.find(item => 
+                        item.i !== draggingItemId && 
+                        item.x === newPos.x && 
+                        item.y === newPos.y
+                      );
+                      
+                      if (targetItem) {
+                        // 두 카드의 위치 교환: 다른 카드를 드래그 중인 카드의 원래 위치로 이동
+                        validatedLayout = validatedLayout.map(item => {
+                          if (item.i === targetItem.i) {
+                            return {
+                              ...item,
+                              x: originalPos.x,
+                              y: originalPos.y,
+                            };
+                          }
+                          return item;
+                        });
+                        // 위치 교환 완료 후 ref 초기화 (중복 교환 방지)
+                        dragStartPositionRef.current = null;
+                        console.log('카드 위치 교환:', {
+                          dragging: draggingItemId,
+                          target: targetItem.i,
+                          draggingNewPos: newPos,
+                          targetNewPos: originalPos,
+                        });
+                      }
+                    }
+                  }
+                }
+                
+                setLayout(validatedLayout);
+              } else {
+                // 모바일은 그대로 저장
+                setLayout(currentLayout);
+              }
             }
           }}
           onDragStart={(layout, item, e) => {
@@ -1507,6 +1816,8 @@ const UserDashboardPage: React.FC = () => {
              */
             console.log('onDragStart 호출됨:', item.i);
             setDraggingItemId(item.i);
+            // 드래그 시작 시 원래 위치 저장
+            dragStartPositionRef.current = { x: item.x, y: item.y };
 
             // 마우스/터치 이벤트에서 Y 좌표 추출
             // react-grid-layout의 이벤트는 일반 마우스 이벤트와 다를 수 있음
@@ -1663,14 +1974,70 @@ const UserDashboardPage: React.FC = () => {
                 // 이때만 언도킹 (카드를 도킹된 카드 탭으로 이동)
                 console.log('도킹 실행:', item.i);
                 dockCard(item.i as DashboardCardId);
-              } else {
-                console.log('도킹 조건 불만족');
               }
             } finally {
               // 드래그가 끝나면 항상 상태 초기화
               setDragStartY(null);
               setDraggingItemId(null);
               setIsDockTargetActive(false);
+              dragStartPositionRef.current = null; // 원래 위치 ref 초기화
+              
+              // 드래그 종료 후 레이아웃 검증 (모바일 진입 전까지 2행 3열로 제한)
+              setTimeout(() => {
+                setLayout((currentLayout) => {
+                  // sm 이상(768px 이상)에서는 2행 3열로 제한
+                  // xs 이하(480px 미만)에서는 세로 스택 허용
+                  const isDesktopOrTablet = window.innerWidth >= 768;
+                  
+                  if (!isDesktopOrTablet) {
+                    return currentLayout; // 모바일(xs, xxs)은 그대로 (세로 스택 허용)
+                  }
+                  
+                  // 2행 3열 범위 내에서만 이동 허용
+                  const cols = 12;
+                  const cardWidth = cols / 3; // 4
+                  const maxY = ROW_HEIGHT; // 6 (2행이므로 최대 y는 6)
+                  
+                  const validatedLayout = currentLayout.map((item) => {
+                    // y는 0 또는 6만 허용 (가장 가까운 행으로 스냅)
+                    // y가 6보다 크면 무조건 6으로 제한 (3행 방지)
+                    let validY: number;
+                    if (item.y <= ROW_HEIGHT / 2) {
+                      validY = 0; // 첫 번째 행
+                    } else if (item.y > maxY) {
+                      validY = maxY; // 6보다 크면 무조건 두 번째 행
+                    } else {
+                      validY = maxY; // 두 번째 행
+                    }
+                    
+                    // x는 0, 4, 8만 허용 (가장 가까운 열로 스냅)
+                    const validX = Math.round(item.x / cardWidth) * cardWidth;
+                    const clampedX = Math.max(0, Math.min(cols - cardWidth, validX));
+                    
+                    // w는 4로 고정, h는 6으로 고정
+                    return {
+                      ...item,
+                      x: clampedX,
+                      y: validY,
+                      w: cardWidth,
+                      h: ROW_HEIGHT,
+                    };
+                  });
+                  
+                  // 레이아웃이 변경되었는지 확인
+                  const hasChanged = validatedLayout.some((item, index) => {
+                    const original = currentLayout[index];
+                    return item.x !== original.x || item.y !== original.y || item.w !== original.w || item.h !== original.h;
+                  });
+                  
+                  if (hasChanged) {
+                    console.log('드래그 종료 후 레이아웃 검증:', { original: currentLayout, validated: validatedLayout });
+                    return validatedLayout;
+                  }
+                  
+                  return currentLayout;
+                });
+              }, 50); // 약간의 지연으로 레이아웃 업데이트 완료 대기
             }
           }}
         >
@@ -1684,13 +2051,13 @@ const UserDashboardPage: React.FC = () => {
             );
           })}
         </ResponsiveGridLayout>
-      </>
+      </div>
     );
   };
 
   return (
     <>
-      <div style={styles.container}>
+      <div style={styles.container} className="dashboard-page-container">
         <h1 style={styles.pageTitle}>
           Dashboard ({getPeriodDescription()}, {getGroupByDescription()})
         </h1>
@@ -1961,18 +2328,25 @@ const UserDashboardPage: React.FC = () => {
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     width: '100%',
-    // maxWidth와 margin: 0 auto 제거 (AppLayout의 app-main이 전체 폭을 사용하도록)
-    // padding은 AppLayout의 app-main에서 처리되므로 제거
+    display: 'flex',
+    flexDirection: 'column',
+    // height, overflow, minHeight는 CSS 클래스(.dashboard-page-container)에서 미디어쿼리로 제어
+  },
+  // 그리드 컨테이너 (flex: 1로 남은 공간 채움)
+  gridContainer: {
+    flex: 1,
+    // minHeight, overflow는 CSS 클래스(.dashboard-grid-container)에서 미디어쿼리로 제어
   },
   pageTitle: {
-    marginBottom: '2rem',
+    marginBottom: '1rem',
     color: '#f1f5f9', // 다크 테마: 밝은 텍스트
-    fontSize: '2rem',
+    fontSize: '1.75rem',
     fontWeight: '700',
     background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
+    flexShrink: 0, // 크기 축소 방지
   },
   loading: {
     textAlign: 'center',
@@ -1991,6 +2365,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   errorContainer: {
     textAlign: 'center',
+    flexShrink: 0,
   },
   retryButton: {
     marginTop: '1rem',
@@ -2008,15 +2383,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   // 필터 바 스타일 (다크 테마)
   filterBar: {
     backgroundColor: '#1e293b', // 다크 테마: 어두운 슬레이트 블루
-    padding: '1.5rem',
+    padding: '1rem 1.5rem',
     borderRadius: '12px',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-    marginBottom: '2rem',
+    marginBottom: '1rem',
     display: 'flex',
     flexWrap: 'wrap',
-    gap: '1.5rem',
+    gap: '1rem',
     alignItems: 'flex-start',
     border: '1px solid rgba(139, 92, 246, 0.2)',
+    flexShrink: 0, // 크기 축소 방지
   },
   filterGroup: {
     display: 'flex',
@@ -2132,7 +2508,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   // 도킹된 카드 탭 영역 스타일
   dockedBar: {
-    margin: '12px 0 16px',
+    margin: '8px 0',
     padding: '8px 12px',
     borderRadius: '8px',
     background: 'rgba(15, 23, 42, 0.7)', // 다크 테마: 어두운 배경
@@ -2141,6 +2517,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '8px',
     border: '1px dashed rgba(148, 163, 184, 0.5)', // 점선 테두리
     transition: 'background 0.15s ease, border 0.15s ease, box-shadow 0.15s ease', // border-color 대신 border 사용
+    flexShrink: 0, // 크기 축소 방지
   },
   dockedBarActive: {
     background: 'rgba(30, 64, 175, 0.4)', // 활성화 시: 살짝 파란 빛
