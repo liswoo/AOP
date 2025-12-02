@@ -29,8 +29,8 @@
   flex-direction: column;
 }
 
-/* ===== 데스크톱 (769px 이상): 뷰포트에 맞춤, 스크롤 없음 ===== */
-@media (min-width: 769px) {
+/* ===== 데스크톱 (1200px 이상): 뷰포트에 맞춤, 스크롤 없음 ===== */
+@media (min-width: 1200px) {
   .app-root {
     height: 100%;
     overflow: hidden;
@@ -48,8 +48,8 @@
   }
 }
 
-/* ===== 모바일 (768px 이하): 자연스러운 높이, 스크롤 허용 ===== */
-@media (max-width: 768px) {
+/* ===== 모바일 (1199px 이하): 자연스러운 높이, 스크롤 허용 ===== */
+@media (max-width: 1199px) {
   .app-root {
     /* 높이 제한 완전 제거: 콘텐츠 높이에 맞춰 자연스럽게 늘어나도록 */
     height: auto !important;
@@ -240,7 +240,7 @@
 }
 
 /* 모바일 반응형 */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .app-main {
     padding: 16px;
     margin-left: 0 !important;
@@ -252,7 +252,7 @@
 }
 
 /* 데스크톱 반응형 */
-@media (min-width: 769px) {
+@media (min-width: 1200px) {
   .sidebar--mobile {
     display: none;
   }

@@ -230,7 +230,7 @@
 }
 
 /* 모바일 반응형 */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .admin-main {
     padding: 16px;
     margin-left: 0 !important;
@@ -242,7 +242,7 @@
 }
 
 /* 데스크톱 반응형 */
-@media (min-width: 769px) {
+@media (min-width: 1200px) {
   .admin-sidebar--mobile {
     display: none;
   }

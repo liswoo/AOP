@@ -16,16 +16,16 @@ html, body, #root {
   width: 100%;
 }
 
-/* 데스크톱 (769px 이상): 뷰포트 고정, 스크롤 제거 */
-@media (min-width: 769px) {
+/* 데스크톱 (1200px 이상): 뷰포트 고정, 스크롤 제거 */
+@media (min-width: 1200px) {
   html, body, #root {
     height: 100%;
     overflow: hidden;
   }
 }
 
-/* 모바일 (768px 이하): 자연스러운 높이, 스크롤 허용 */
-@media (max-width: 768px) {
+/* 모바일 (1199px 이하): 자연스러운 높이, 스크롤 허용 */
+@media (max-width: 1199px) {
   html {
     height: auto;
     /* min-height, max-height 제거: 콘텐츠 높이에 맞춰 자연스럽게 늘어나도록 */

@@ -42,7 +42,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
    * 햄버거 버튼 클릭 핸들러
    */
   const handleMenuClick = () => {
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < 1200;
     if (isMobile && onOpenMobileSidebar) {
       onOpenMobileSidebar();
     } else if (!isMobile && onToggleSidebar) {

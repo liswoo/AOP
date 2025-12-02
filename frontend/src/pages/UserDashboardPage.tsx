@@ -118,7 +118,7 @@ function computeLayout(activeCards: DashboardCardId[], cols: number = 12): Layou
     colCount = 1;
   } else {
     // 데스크톱/태블릿 (lg, md, sm): 2행 3열 유지
-    // sm 브레이크포인트(768px) 이상에서는 항상 3열로 처리
+    // sm 브레이크포인트(1200px) 이상에서는 항상 3열로 처리
     colCount =
       n <= 1 ? 1 :
       n === 2 ? 2 :
@@ -205,7 +205,7 @@ const UserDashboardPage: React.FC = () => {
   // 동적 rowHeight 상태 (뷰포트 높이 기반으로 계산)
   const [responsiveRowHeight, setResponsiveRowHeight] = useState(35);
   
-  // 모바일 여부 상태 (768px 이하)
+  // 모바일 여부 상태 (1200px 미만)
   const [isMobile, setIsMobile] = useState(false);
 
   // 필터 상태
@@ -306,12 +306,12 @@ const UserDashboardPage: React.FC = () => {
   /**
    * 실제 DOM 요소를 측정하여 rowHeight 계산 (ResizeObserver 사용)
    * 
-   * 데스크톱 (768px 이상): 그리드 컨테이너의 실제 높이를 측정하여 계산
-   * 모바일 (768px 미만): 기본 rowHeight 사용, 스크롤 허용
+   * 데스크톱 (1200px 이상): 그리드 컨테이너의 실제 높이를 측정하여 계산
+   * 모바일 (1200px 미만): 기본 rowHeight 사용, 스크롤 허용
    */
   useEffect(() => {
     const viewportWidth = window.innerWidth;
-    const mobile = viewportWidth <= 768;
+    const mobile = viewportWidth < 1200;
     setIsMobile(mobile);
     
     // 모바일에서는 더 큰 rowHeight 사용
@@ -1108,7 +1108,7 @@ const UserDashboardPage: React.FC = () => {
   // 현재 브레이크포인트에 맞는 cols 계산
   const getCurrentCols = (): number => {
     const width = window.innerWidth;
-    if (width >= 1200) return 12; // lg
+    if (width >= 1200) return 12; // lg (데스크톱 모드)
     if (width >= 996) return 12; // md
     if (width >= 768) return 6; // sm
     if (width >= 480) return 2; // xs
@@ -1128,7 +1128,7 @@ const UserDashboardPage: React.FC = () => {
    */
   const baseLayout = useMemo(
     () => {
-      // sm 이상(768px 이상)에서는 2행 3열 유지를 위해 12열로 처리
+      // 1200px 이상에서는 2행 3열 유지를 위해 12열로 처리
       const layoutCols = currentCols >= 6 ? 12 : currentCols;
       return computeLayout(activeCards, layoutCols);
     },
@@ -1141,7 +1141,16 @@ const UserDashboardPage: React.FC = () => {
   // 창 크기 변경 감지하여 브레이크포인트 업데이트 (onBreakpointChange와 함께 사용)
   useEffect(() => {
     const handleResize = () => {
+      const viewportWidth = window.innerWidth;
+      const newMobile = viewportWidth < 1200;
       const newCols = getCurrentCols();
+      
+      // isMobile 상태 업데이트
+      if (newMobile !== isMobile) {
+        setIsMobile(newMobile);
+      }
+      
+      // currentCols 상태 업데이트
       if (newCols !== currentCols) {
         setCurrentCols(newCols);
       }
@@ -1149,12 +1158,13 @@ const UserDashboardPage: React.FC = () => {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [currentCols]);
+  }, [currentCols, isMobile]);
 
   // baseLayout이 변경되면 layout도 업데이트 (단, 확대 상태가 아닐 때만)
   useEffect(() => {
     if (!expandedGridCardId) {
-      // baseLayout이 변경되었을 때만 업데이트 (브레이크포인트 변경 시에는 위의 handleResize에서 처리)
+      // baseLayout이 변경되었을 때 레이아웃 업데이트
+      // onBreakpointChange에서도 처리하지만, 여기서도 보장하여 동기화 유지
       setLayout(baseLayout);
     }
   }, [baseLayout, expandedGridCardId]);
@@ -1887,11 +1897,23 @@ const UserDashboardPage: React.FC = () => {
           margin={[12, 12]}
           useCSSTransforms={true} // CSS transform 사용으로 성능 향상
           onBreakpointChange={(newBreakpoint, newCols) => {
-            // 브레이크포인트 변경 시 레이아웃 재설정
+            // 브레이크포인트 변경 시 상태 및 레이아웃 재설정
             console.log('브레이크포인트 변경:', { newBreakpoint, newCols, currentCols });
             if (!expandedGridCardId) {
-              // sm 이상(768px 이상)에서는 2행 3열 유지를 위해 12열로 처리
-              const layoutCols = newCols >= 6 ? 12 : newCols;
+              const viewportWidth = window.innerWidth;
+              const isDesktop = viewportWidth >= 1200;
+              
+              // isMobile 상태 즉시 업데이트
+              setIsMobile(!isDesktop);
+              
+              // currentCols 업데이트 (baseLayout 재계산 트리거)
+              const newColsValue = getCurrentCols();
+              if (newColsValue !== currentCols) {
+                setCurrentCols(newColsValue);
+              }
+              
+              // 레이아웃 즉시 재계산 (baseLayout이 업데이트되기 전에 미리 적용)
+              const layoutCols = isDesktop ? 12 : newCols;
               const newLayout = computeLayout(activeCards, layoutCols);
               setLayout(newLayout);
             }
@@ -1905,8 +1927,8 @@ const UserDashboardPage: React.FC = () => {
           onLayoutChange={(currentLayout) => {
             // 확대 상태가 아닐 때만 레이아웃 업데이트
             if (!expandedGridCardId) {
-              // sm 이상(768px 이상)에서는 드래그 중에도 2행 3열로 제한 및 위치 교환
-              const isDesktopOrTablet = window.innerWidth >= 768;
+              // 1200px 이상에서는 드래그 중에도 2행 3열로 제한 및 위치 교환
+              const isDesktopOrTablet = window.innerWidth >= 1200;
               
               if (isDesktopOrTablet) {
                 // 2행 3열 범위 내에서만 이동 허용
@@ -2164,9 +2186,9 @@ const UserDashboardPage: React.FC = () => {
               // 드래그 종료 후 레이아웃 검증 (모바일 진입 전까지 2행 3열로 제한)
               setTimeout(() => {
                 setLayout((currentLayout) => {
-                  // sm 이상(768px 이상)에서는 2행 3열로 제한
+                  // 1200px 이상에서는 2행 3열로 제한
                   // xs 이하(480px 미만)에서는 세로 스택 허용
-                  const isDesktopOrTablet = window.innerWidth >= 768;
+                  const isDesktopOrTablet = window.innerWidth >= 1200;
                   
                   if (!isDesktopOrTablet) {
                     return currentLayout; // 모바일(xs, xxs)은 그대로 (세로 스택 허용)

@@ -34,7 +34,7 @@
 }
 
 /* 모바일에서 카드 높이 제한 제거 */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .dashboard-card {
     height: auto !important;
     min-height: auto !important;

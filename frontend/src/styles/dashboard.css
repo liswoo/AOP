@@ -19,7 +19,7 @@
 }
 
 /* 대시보드 필터 바 - 모바일 대응 */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .dashboard-page-container > div:nth-child(2) {
     flex-wrap: wrap !important;
     padding: 12px !important;
@@ -41,8 +41,8 @@
   /* 기본값 유지 */
 }
 
-/* ===== 데스크톱 (769px 이상): 뷰포트에 맞춤, 스크롤 없음 ===== */
-@media (min-width: 769px) {
+/* ===== 데스크톱 (1200px 이상): 뷰포트에 맞춤, 스크롤 없음 ===== */
+@media (min-width: 1200px) {
   .dashboard-page-container {
     height: 100%;
     overflow: hidden;
@@ -62,8 +62,8 @@
   }
 }
 
-/* ===== 모바일 (768px 이하): 자연스러운 높이, 세로 스크롤 허용 ===== */
-@media (max-width: 768px) {
+/* ===== 모바일 (1199px 이하): 자연스러운 높이, 세로 스크롤 허용 ===== */
+@media (max-width: 1199px) {
   .dashboard-page-container {
     height: auto !important;
     min-height: auto !important;
@@ -180,7 +180,7 @@
 }
 
 /* 모바일에서 카드 본문 높이 제한 제거 */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .dashboard-card-body {
     flex: none !important;
     height: auto !important;
@@ -200,7 +200,7 @@
 }
 
 /* 모바일에서 차트 컨테이너 높이 제한 제거 */
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .chart-container {
     flex: none !important;
     height: auto !important;
@@ -410,7 +410,7 @@
 }
 
 /* 모바일에서만 표시 */
-@media (min-width: 769px) {
+@media (min-width: 1200px) {
   .dashboard-mobile-expand-overlay {
     display: none !important;
   }

@@ -60,7 +60,7 @@ const Header: React.FC<HeaderProps> = ({
    */
   const handleMenuClick = () => {
     // 모바일 환경 감지 (간단한 방법)
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < 1200;
     if (isMobile && onOpenMobileSidebar) {
       onOpenMobileSidebar();
     } else if (!isMobile && onToggleSidebar) {
