@@ -548,3 +548,230 @@ useEffect(() => {
 - 새로운 컴포넌트를 추가할 때는 반드시 **1200px** 기준을 사용해야 합니다.
 - 기존 코드를 수정할 때도 **1200px** 기준을 유지해야 합니다.
 - CSS 미디어 쿼리, JavaScript 조건문 모두 **1200px** 기준으로 작성해야 합니다.
+
+---
+
+## 📋 Reports 페이지 사이드바 Blur 효과 구현
+
+### 문제 상황
+
+모바일 환경(1199px 이하)에서 Reports 페이지의 사이드바를 열면:
+- Sheet의 나머지 열들은 blur 효과가 정상적으로 적용됨
+- **첫 번째 열(고정 열)만 blur 효과가 적용되지 않음**
+- 사이드바 메뉴까지 blur가 적용되는 문제 발생
+
+### 원인 분석
+
+1. **Handsontable 고정 열의 z-index 문제**: Handsontable의 고정 열(`ht_clone_left`, `ht_clone_top_left`)이 backdrop보다 높은 z-index를 가지고 있어 blur 효과가 적용되지 않음
+2. **backdrop-filter의 범위 문제**: `backdrop-filter: blur(2px)`가 사이드바까지 영향을 주어 사이드바 메뉴까지 blur되는 문제 발생
+3. **CSS 선택자 한계**: CSS만으로는 Handsontable의 동적으로 생성되는 고정 열을 정확히 타겟팅하기 어려움
+
+### 해결 방법
+
+#### 1. appLayout.css 수정
+
+**문제**: `backdrop-filter`가 사이드바까지 blur 효과를 적용함
+
+**해결**: `backdrop-filter`를 제거하고 `app-main`에만 `filter: blur(2px)` 적용
+
+```css
+/* 모바일 오버레이 배경 */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 30;
+  /* backdrop-filter 제거 - 사이드바까지 blur되는 것을 방지 */
+}
+
+/* 모바일에서 사이드바가 열려있을 때 app-main에만 blur 적용 */
+@media (max-width: 1199px) {
+  /* app-root에 sidebar-overlay-open 클래스가 있을 때 app-main에 blur 적용 */
+  .app-root.sidebar-overlay-open .app-main {
+    filter: blur(2px);
+    pointer-events: none; /* 클릭 이벤트 차단 */
+  }
+  
+  /* 사이드바는 blur에서 제외 */
+  .app-root.sidebar-overlay-open .sidebar {
+    filter: none !important;
+    pointer-events: auto !important;
+  }
+}
+```
+
+**핵심 포인트:**
+- `backdrop-filter` 제거: 사이드바까지 blur되는 문제 해결
+- `app-main`에만 `filter: blur(2px)` 적용: 메인 컨텐츠 영역만 blur
+- 사이드바는 `filter: none !important`로 blur 제외
+
+#### 2. WorkshopKpiSheet.tsx 수정
+
+**문제**: Handsontable의 고정 열이 `app-main`의 blur를 상속받지 않음
+
+**해결**: JavaScript로 사이드바 상태를 감지하고 첫 번째 열에 직접 blur 적용
+
+```typescript
+// frontend/src/components/report/WorkshopKpiSheet.tsx
+
+import React, { useMemo, useRef, useState, useLayoutEffect, useEffect } from 'react';
+
+const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({ ... }) => {
+  const hotTableRef = useRef<HotTable | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * 사이드바 상태에 따라 첫 번째 열에 blur 적용하는 함수
+   */
+  const applyBlurToFirstColumn = () => {
+    if (!hotTableRef.current) return;
+
+    // @ts-ignore
+    const hotInstance = hotTableRef.current?.hotInstance || hotTableRef.current;
+    if (!hotInstance) return;
+
+    const container = hotInstance.rootElement;
+    if (!container) return;
+
+    // 사이드바 상태 확인
+    const appRoot = document.querySelector('.app-root');
+    const isOpen = appRoot?.classList.contains('sidebar-overlay-open') || false;
+
+    // 고정 열 요소 찾기 (ht_clone_left, ht_clone_top_left)
+    const fixedLeftElements = container.querySelectorAll('.ht_clone_left, .ht_clone_top_left');
+    
+    if (fixedLeftElements.length > 0) {
+      // 고정 열이 있는 경우 - 고정 열에 blur 적용
+      fixedLeftElements.forEach((element: Element) => {
+        const htmlElement = element as HTMLElement;
+        if (isOpen) {
+          htmlElement.style.filter = 'blur(2px)';
+          htmlElement.style.pointerEvents = 'none';
+        } else {
+          htmlElement.style.filter = '';
+          htmlElement.style.pointerEvents = '';
+        }
+      });
+    } else {
+      // 고정 열이 없는 경우 - 첫 번째 열의 모든 셀 찾기
+      const firstColumnCells = container.querySelectorAll(
+        '.htCore tbody tr td:first-child, .htCore thead tr th:first-child, .ht_master tbody tr td:first-child, .ht_master thead tr th:first-child'
+      );
+      
+      firstColumnCells.forEach((cell: Element) => {
+        const htmlCell = cell as HTMLElement;
+        if (isOpen) {
+          htmlCell.style.filter = 'blur(2px)';
+          htmlCell.style.pointerEvents = 'none';
+        } else {
+          htmlCell.style.filter = '';
+          htmlCell.style.pointerEvents = '';
+        }
+      });
+    }
+  };
+
+  /**
+   * 사이드바 상태 변경 감지 및 blur 적용
+   */
+  useEffect(() => {
+    // 사이드바 상태 변경 감지
+    const checkSidebarState = () => {
+      applyBlurToFirstColumn();
+    };
+
+    // MutationObserver로 클래스 변경 감지
+    const observer = new MutationObserver(checkSidebarState);
+    const appRoot = document.querySelector('.app-root');
+    if (appRoot) {
+      observer.observe(appRoot, {
+        attributes: true,
+        attributeFilter: ['class'],
+      });
+    }
+
+    // Handsontable이 업데이트될 때마다 확인
+    const interval = setInterval(() => {
+      applyBlurToFirstColumn();
+    }, 200);
+
+    // 초기 실행
+    setTimeout(applyBlurToFirstColumn, 500);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <div className="workshop-kpi-sheet-container" ref={containerRef}>
+      <HotTable
+        ref={hotTableRef}
+        // ... 기타 props
+        afterInit={() => {
+          // 초기화 후 blur 적용
+          setTimeout(() => {
+            applyBlurToFirstColumn();
+          }, 200);
+        }}
+      />
+    </div>
+  );
+};
+```
+
+**핵심 포인트:**
+- `MutationObserver`로 `sidebar-overlay-open` 클래스 변경 감지
+- 고정 열이 있으면 고정 열에 blur 적용, 없으면 첫 번째 열의 셀들에 직접 적용
+- Handsontable 초기화 후(`afterInit`)에도 blur 적용
+- 주기적으로 확인하여 Handsontable 업데이트 시에도 자동 적용
+
+### 동작 원리
+
+1. **사이드바 열림**: `AppLayout`에서 `sidebarOverlayOpen`이 `true`가 되면 `app-root`에 `sidebar-overlay-open` 클래스 추가
+2. **CSS blur 적용**: `app-main`에 `filter: blur(2px)` 적용 (사이드바는 제외)
+3. **JavaScript blur 적용**: `WorkshopKpiSheet`에서 `MutationObserver`로 클래스 변경 감지
+4. **첫 번째 열 blur**: Handsontable의 고정 열 또는 첫 번째 열의 셀들에 직접 `filter: blur(2px)` 적용
+5. **사이드바 닫힘**: 클래스가 제거되면 blur 효과 제거
+
+### 주의사항
+
+1. **z-index 관리**
+   - `sidebar-backdrop`: `z-index: 30`
+   - `sidebar--mobile`: `z-index: 40`
+   - Handsontable 고정 열은 기본적으로 높은 z-index를 가지므로 JavaScript로 직접 제어 필요
+
+2. **Handsontable 초기화 타이밍**
+   - Handsontable은 비동기적으로 초기화되므로 `afterInit` 콜백 사용
+   - 초기화 후에도 주기적으로 확인하여 blur 적용 보장
+
+3. **선택자 정확성**
+   - 고정 열이 있는 경우: `.ht_clone_left`, `.ht_clone_top_left`
+   - 고정 열이 없는 경우: `.htCore tbody tr td:first-child`, `.htCore thead tr th:first-child`
+   - Handsontable 버전에 따라 구조가 다를 수 있으므로 여러 선택자 시도
+
+4. **성능 고려**
+   - `MutationObserver`와 `setInterval`을 함께 사용하여 안정성 확보
+   - `setInterval`의 주기는 200ms로 설정하여 성능과 반응성 균형 유지
+
+5. **사이드바 blur 제외**
+   - 사이드바는 `filter: none !important`로 blur에서 명시적으로 제외
+   - `pointer-events: auto !important`로 클릭 이벤트 정상 작동 보장
+
+### 관련 파일
+
+- `frontend/src/styles/appLayout.css` - 사이드바 backdrop 및 app-main blur 설정
+- `frontend/src/components/report/WorkshopKpiSheet.tsx` - 첫 번째 열 blur 적용 로직
+- `frontend/src/layout/AppLayout.tsx` - 사이드바 상태 관리 및 클래스 추가
+
+### 해결 완료 체크리스트
+
+- [x] `backdrop-filter` 제거하여 사이드바 blur 문제 해결
+- [x] `app-main`에만 blur 적용
+- [x] 사이드바는 blur에서 제외
+- [x] Handsontable 고정 열에 JavaScript로 blur 적용
+- [x] 고정 열이 없는 경우 첫 번째 열의 셀들에 blur 적용
+- [x] `MutationObserver`로 사이드바 상태 변경 감지
+- [x] Handsontable 초기화 후 blur 적용
+- [x] 주기적 확인으로 Handsontable 업데이트 시에도 blur 적용

@@ -133,7 +133,22 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
   z-index: 30;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter 제거 - 사이드바까지 blur되는 것을 방지 */
+}
+
+/* 모바일에서 사이드바가 열려있을 때 app-main에만 blur 적용 */
+@media (max-width: 1199px) {
+  /* app-root에 sidebar-overlay-open 클래스가 있을 때 app-main에 blur 적용 */
+  .app-root.sidebar-overlay-open .app-main {
+    filter: blur(2px);
+    pointer-events: none; /* 클릭 이벤트 차단 */
+  }
+  
+  /* 사이드바는 blur에서 제외 */
+  .app-root.sidebar-overlay-open .sidebar {
+    filter: none !important;
+    pointer-events: auto !important;
+  }
 }
 
 /* 사이드바 헤더 (로고/타이틀 영역) */

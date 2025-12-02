@@ -59,7 +59,7 @@ const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="app-root">
+    <div className={`app-root ${sidebarOverlayOpen ? 'sidebar-overlay-open' : ''}`}>
       {/* 상단 헤더 */}
       <Header
         onToggleSidebar={handleToggleSidebar}

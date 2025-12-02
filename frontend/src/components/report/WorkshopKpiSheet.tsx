@@ -11,7 +11,7 @@
  * - 읽기 전용 모드 (향후 편집 가능하도록 구조 확장 가능)
  */
 
-import React, { useMemo, useRef, useState, useLayoutEffect } from 'react';
+import React, { useMemo, useRef, useState, useLayoutEffect, useEffect } from 'react';
 import { HotTable } from '@handsontable/react';
 import type { CellProperties } from 'handsontable/settings';
 import { WORKSHOP_KPI_ROWS, WORKSHOP_KPI_COLUMNS } from './workshopKpiLayout';
@@ -41,11 +41,133 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
 }) => {
   const hotTableRef = useRef<HotTable | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  
+  // 사이드바 오버레이 상태 감지
+  const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
 
   /**
    * 컬럼 수 계산 (동적으로 처리)
    */
   const columnCount = WORKSHOP_KPI_COLUMNS.length;
+  
+  /**
+   * 사이드바 오버레이 상태 감지 (app-root의 클래스 확인)
+   */
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const appRoot = document.querySelector('.app-root');
+      const isOpen = appRoot?.classList.contains('sidebar-overlay-open') || false;
+      setIsSidebarOverlayOpen(isOpen);
+    };
+
+    // 초기 확인
+    checkSidebarState();
+
+    // MutationObserver로 클래스 변경 감지
+    const observer = new MutationObserver(checkSidebarState);
+    const appRoot = document.querySelector('.app-root');
+    if (appRoot) {
+      observer.observe(appRoot, {
+        attributes: true,
+        attributeFilter: ['class'],
+      });
+    }
+
+    // 주기적으로도 확인 (MutationObserver가 작동하지 않는 경우 대비)
+    const interval = setInterval(checkSidebarState, 100);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+    };
+  }, []);
+
+  /**
+   * 사이드바가 열려있을 때 Handsontable 고정 열에 blur 적용
+   * Handsontable이 완전히 초기화된 후에 실행되도록 주기적으로 확인
+   */
+  useEffect(() => {
+    if (!hotTableRef.current) return;
+
+    const applyBlurToFixedColumns = () => {
+      // @ts-ignore
+      const hotInstance = hotTableRef.current?.hotInstance || hotTableRef.current;
+      if (!hotInstance) return false;
+
+      const container = hotInstance.rootElement;
+      if (!container) return false;
+
+      // 고정 열 요소 찾기 (더 구체적인 선택자 사용)
+      const fixedLeftElements = container.querySelectorAll('.ht_clone_left, .ht_clone_top_left');
+      
+      // 고정 열이 있으면 적용
+      if (fixedLeftElements.length > 0) {
+        fixedLeftElements.forEach((element: Element) => {
+          const htmlElement = element as HTMLElement;
+          if (isSidebarOverlayOpen) {
+            htmlElement.style.filter = 'blur(2px)';
+            htmlElement.style.pointerEvents = 'none';
+            htmlElement.style.zIndex = '25';
+            htmlElement.style.position = 'relative';
+          } else {
+            htmlElement.style.filter = '';
+            htmlElement.style.pointerEvents = '';
+            htmlElement.style.zIndex = '';
+            htmlElement.style.position = '';
+          }
+        });
+
+        // 내부의 모든 자식 요소에도 blur 적용
+        fixedLeftElements.forEach((element: Element) => {
+          const allChildren = element.querySelectorAll('*');
+          allChildren.forEach((child: Element) => {
+            const htmlChild = child as HTMLElement;
+            if (isSidebarOverlayOpen) {
+              htmlChild.style.filter = 'blur(2px)';
+            } else {
+              htmlChild.style.filter = '';
+            }
+          });
+        });
+
+        return true; // 성공적으로 적용됨
+      }
+
+      // 고정 열이 없으면 첫 번째 열(col 0)의 셀들을 직접 찾기
+      const firstColumnCells = container.querySelectorAll('td[data-col="0"], th[data-col="0"]');
+      if (firstColumnCells.length > 0) {
+        firstColumnCells.forEach((cell: Element) => {
+          const htmlCell = cell as HTMLElement;
+          if (isSidebarOverlayOpen) {
+            htmlCell.style.filter = 'blur(2px)';
+            htmlCell.style.pointerEvents = 'none';
+          } else {
+            htmlCell.style.filter = '';
+            htmlCell.style.pointerEvents = '';
+          }
+        });
+        return true;
+      }
+
+      return false; // 아직 생성되지 않음
+    };
+
+    // 즉시 시도
+    if (applyBlurToFixedColumns()) {
+      return; // 이미 적용됨
+    }
+
+    // Handsontable이 아직 초기화되지 않았으면 주기적으로 확인
+    const interval = setInterval(() => {
+      if (applyBlurToFixedColumns()) {
+        clearInterval(interval);
+      }
+    }, 50); // 50ms마다 확인
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isSidebarOverlayOpen]);
 
   // 각 컬럼 너비 상태 (px)
   const [colWidths, setColWidths] = useState<number[]>(() =>
@@ -288,6 +410,91 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
     };
   }, [columnCount]);
 
+  /**
+   * 사이드바 상태에 따라 첫 번째 열에 blur 적용하는 함수
+   */
+  const applyBlurToFirstColumn = () => {
+    if (!hotTableRef.current) return;
+
+    // @ts-ignore
+    const hotInstance = hotTableRef.current?.hotInstance || hotTableRef.current;
+    if (!hotInstance) return;
+
+    const container = hotInstance.rootElement;
+    if (!container) return;
+
+    // 사이드바 상태 확인
+    const appRoot = document.querySelector('.app-root');
+    const isOpen = appRoot?.classList.contains('sidebar-overlay-open') || false;
+
+    // 고정 열 요소 찾기 (ht_clone_left, ht_clone_top_left)
+    const fixedLeftElements = container.querySelectorAll('.ht_clone_left, .ht_clone_top_left');
+    
+    if (fixedLeftElements.length > 0) {
+      // 고정 열이 있는 경우 - 고정 열에 blur 적용
+      fixedLeftElements.forEach((element: Element) => {
+        const htmlElement = element as HTMLElement;
+        if (isOpen) {
+          htmlElement.style.filter = 'blur(2px)';
+          htmlElement.style.pointerEvents = 'none';
+        } else {
+          htmlElement.style.filter = '';
+          htmlElement.style.pointerEvents = '';
+        }
+      });
+    } else {
+      // 고정 열이 없는 경우 - 첫 번째 열의 모든 셀 찾기
+      // Handsontable의 구조: .htCore > table > tbody > tr > td:first-child
+      const firstColumnCells = container.querySelectorAll(
+        '.htCore tbody tr td:first-child, .htCore thead tr th:first-child, .ht_master tbody tr td:first-child, .ht_master thead tr th:first-child'
+      );
+      
+      firstColumnCells.forEach((cell: Element) => {
+        const htmlCell = cell as HTMLElement;
+        if (isOpen) {
+          htmlCell.style.filter = 'blur(2px)';
+          htmlCell.style.pointerEvents = 'none';
+        } else {
+          htmlCell.style.filter = '';
+          htmlCell.style.pointerEvents = '';
+        }
+      });
+    }
+  };
+
+  /**
+   * 사이드바 상태 변경 감지 및 blur 적용
+   */
+  useEffect(() => {
+    // 사이드바 상태 변경 감지
+    const checkSidebarState = () => {
+      applyBlurToFirstColumn();
+    };
+
+    // MutationObserver로 클래스 변경 감지
+    const observer = new MutationObserver(checkSidebarState);
+    const appRoot = document.querySelector('.app-root');
+    if (appRoot) {
+      observer.observe(appRoot, {
+        attributes: true,
+        attributeFilter: ['class'],
+      });
+    }
+
+    // Handsontable이 업데이트될 때마다 확인
+    const interval = setInterval(() => {
+      applyBlurToFirstColumn();
+    }, 200);
+
+    // 초기 실행
+    setTimeout(applyBlurToFirstColumn, 500);
+
+    return () => {
+      observer.disconnect();
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <div className="workshop-kpi-sheet-container" ref={containerRef}>
       <HotTable
@@ -303,6 +510,12 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
         mergeCells={mergeCells}
         rowHeights={rowHeights}
         cells={cellsCallback}
+        afterInit={() => {
+          // 초기화 후 blur 적용
+          setTimeout(() => {
+            applyBlurToFirstColumn();
+          }, 200);
+        }}
       />
     </div>
   );
