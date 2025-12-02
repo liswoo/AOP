@@ -46,3 +46,4 @@ public interface MartDailySalesRepository extends JpaRepository<MartDailySales, 
 }
 
 
+

@@ -11,6 +11,7 @@
   color: #e5e7eb;
   display: flex;
   flex-direction: column;
+  /* 모바일에서는 배경색이 index.css의 body와 일치하도록 설정됨 */
 }
 
 /* 메인 레이아웃 (사이드바 + 컨텐츠) */
@@ -50,25 +51,38 @@
 /* ===== 모바일 (768px 이하): 자연스러운 높이, 스크롤 허용 ===== */
 @media (max-width: 768px) {
   .app-root {
-    min-height: 100vh;
+    /* 높이 제한 완전 제거: 콘텐츠 높이에 맞춰 자연스럽게 늘어나도록 */
     height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
-    background: radial-gradient(circle at top, #111827 0, #020617 60%) !important; /* 배경 명시 */
+    background: #020617 !important; /* 모바일에서는 단색 배경으로 통일하여 빈 공간 문제 해결 */
+    /* flex 컨테이너로 유지하여 Header와 app-body가 세로로 배치되도록 */
+    display: flex !important;
+    flex-direction: column !important;
   }
   
   .app-body {
     flex: none !important;
     height: auto !important;
     min-height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
+    background: #020617; /* body와 동일한 배경색으로 통일 */
+    /* flex 컨테이너로 유지 */
+    display: flex !important;
+    width: 100%; /* 전체 너비 사용 */
   }
   
   .app-main {
     flex: none !important;
     height: auto !important;
     min-height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
     padding-bottom: 20px; /* 하단 여유 공간 */
+    width: 100%; /* 전체 너비 사용 */
+    /* 내부 스크롤 방지: 모든 스크롤은 body 레벨에서 처리 */
   }
 }
 

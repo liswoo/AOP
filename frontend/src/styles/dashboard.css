@@ -67,17 +67,22 @@
   .dashboard-page-container {
     height: auto !important;
     min-height: auto !important;
+    max-height: none !important;
     overflow-x: hidden !important; /* 가로 스크롤 방지 */
     overflow-y: visible !important;
     max-width: 100vw;
     padding: 0 8px;
+    padding-bottom: 16px; /* 하단 여유 공간 추가 */
     box-sizing: border-box;
+    background: transparent; /* 배경 투명 (부모의 배경색 사용) */
+    /* 내부 스크롤 방지: 모든 스크롤은 body 레벨에서 처리 */
   }
   
   .dashboard-grid-container {
     flex: none !important;
     height: auto !important;
     min-height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
     width: 100%;
     max-width: 100%;
@@ -87,6 +92,7 @@
     flex: none !important;
     height: auto !important;
     min-height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -94,11 +100,36 @@
   
   .react-grid-layout {
     height: auto !important;
+    max-height: none !important;
     width: 100% !important;
+    /* 내부 스크롤 방지 */
+    overflow: visible !important;
+    /* react-grid-layout의 높이 계산 무시 */
+    position: relative !important;
+    /* 모바일에서 flex 컨테이너로 변경하여 자연스럽게 쌓이도록 */
+    display: flex !important;
+    flex-direction: column !important;
   }
   
   .react-grid-item {
-    width: calc(100% - 24px) !important; /* 마진 고려 */
+    width: 100% !important; /* 전체 너비 사용 */
+    max-width: 100% !important;
+    height: auto !important; /* 높이 자동 조정 */
+    /* react-grid-layout의 위치 계산 완전히 무시 */
+    position: relative !important;
+    transform: none !important; /* CSS transform 제거 */
+    left: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin-bottom: 16px !important; /* 카드 간 간격 */
+    /* flex 아이템으로 동작 */
+    flex-shrink: 0;
+  }
+  
+  /* react-grid-layout의 플레이스홀더도 모바일에서 숨김 */
+  .react-grid-item.react-grid-placeholder {
+    display: none !important;
   }
 }
 
@@ -148,6 +179,17 @@
   overflow: hidden;
 }
 
+/* 모바일에서 카드 본문 높이 제한 제거 */
+@media (max-width: 768px) {
+  .dashboard-card-body {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
 /* Chart.js 차트 컨테이너 (react-grid-layout과 Chart.js 높이를 맞추기 위한 처리) */
 .chart-container {
   width: 100%;
@@ -155,6 +197,18 @@
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+/* 모바일에서 차트 컨테이너 높이 제한 제거 */
+@media (max-width: 768px) {
+  .chart-container {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    /* 모바일에서는 최소 높이 설정 (차트가 너무 작아지지 않도록) */
+    min-height: 200px;
+  }
 }
 
 /* AI 분석 모드 오버레이 */

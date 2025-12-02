@@ -86,3 +86,4 @@ public class MartWeeklySales extends BaseEntity {
 }
 
 
+

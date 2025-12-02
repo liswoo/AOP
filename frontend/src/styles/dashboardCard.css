@@ -32,3 +32,13 @@
   color: #8b5cf6; /* 보라색 */
   transform: scale(1.1);
 }
+
+/* 모바일에서 카드 높이 제한 제거 */
+@media (max-width: 768px) {
+  .dashboard-card {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    /* 인라인 스타일의 height: 100%를 오버라이드 */
+  }
+}

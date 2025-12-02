@@ -112,6 +112,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: '#1e293b', // 다크 테마: 어두운 슬레이트 블루
     borderBottom: '1px solid rgba(139, 92, 246, 0.2)', // 보라색 테두리
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    flexShrink: 0, // 모바일에서 Header가 축소되지 않도록
+    width: '100%', // 전체 너비 사용
+    boxSizing: 'border-box', // padding 포함
   },
   leftSection: {
     display: 'flex',

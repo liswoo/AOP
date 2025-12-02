@@ -1704,7 +1704,7 @@ const UserDashboardPage: React.FC = () => {
           }}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 12, sm: 12, xs: 2, xxs: 2 }} // sm도 12열로 처리 (2행 3열 유지)
-          rowHeight={responsiveRowHeight}
+          rowHeight={isMobile ? 1 : responsiveRowHeight} // 모바일에서는 최소 높이로 설정하여 높이 계산 무시
           margin={[12, 12]}
           useCSSTransforms={true} // CSS transform 사용으로 성능 향상
           onBreakpointChange={(newBreakpoint, newCols) => {
