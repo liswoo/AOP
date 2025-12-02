@@ -28,3 +28,5 @@ public interface MartWeeklySalesRepository extends JpaRepository<MartWeeklySales
 
 
 
+
+

@@ -52,3 +52,5 @@ public class MartDailyInventory extends BaseEntity {
 
 
 
+
+

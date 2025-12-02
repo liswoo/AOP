@@ -72,6 +72,7 @@
     /* flex 컨테이너로 유지 */
     display: flex !important;
     width: 100%; /* 전체 너비 사용 */
+    padding-top: 65px !important; /* 헤더가 fixed이므로 헤더 높이만큼 여백 추가 */
   }
   
   .app-main {

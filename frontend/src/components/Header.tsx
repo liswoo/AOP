@@ -7,7 +7,7 @@
  * ADMIN 계정으로 로그인했을 때는 "사용자 관리" 링크도 함께 표시합니다.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import ProfileDropdown from './ProfileDropdown';
@@ -36,6 +36,7 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const headerRef = useRef<HTMLElement | null>(null);
 
   /**
    * 로그아웃 핸들러
@@ -68,8 +69,68 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  /**
+   * 헤더 디버깅: 헤더의 position과 스크롤 상태 확인
+   */
+  useEffect(() => {
+    const headerElement = headerRef.current;
+    if (!headerElement) return;
+
+    const isMobile = window.innerWidth < 1200;
+    const computedStyle = window.getComputedStyle(headerElement);
+
+    // 초기 상태 로그
+    console.log('🔍 [Header] 초기 상태:', {
+      isMobile,
+      windowWidth: window.innerWidth,
+      headerPosition: computedStyle.position,
+      headerTop: computedStyle.top,
+      headerZIndex: computedStyle.zIndex,
+      headerRect: headerElement.getBoundingClientRect(),
+    });
+
+    // 스크롤 이벤트 핸들러
+    const handleScroll = () => {
+      const rect = headerElement.getBoundingClientRect();
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      
+      console.log('📜 [Header] 스크롤 이벤트:', {
+        scrollY,
+        headerTop: rect.top,
+        headerBottom: rect.bottom,
+        headerHeight: rect.height,
+        headerPosition: computedStyle.position,
+        isSticky: computedStyle.position === 'sticky',
+        isFixed: computedStyle.position === 'fixed',
+      });
+    };
+
+    // 스크롤 이벤트 리스너 추가
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // 리사이즈 이벤트 핸들러
+    const handleResize = () => {
+      const newIsMobile = window.innerWidth < 1200;
+      const newComputedStyle = window.getComputedStyle(headerElement);
+      
+      console.log('📐 [Header] 리사이즈 이벤트:', {
+        isMobile: newIsMobile,
+        windowWidth: window.innerWidth,
+        headerPosition: newComputedStyle.position,
+        headerTop: newComputedStyle.top,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
-    <header style={styles.header}>
+    <header ref={headerRef} style={styles.header}>
       <div style={styles.leftSection}>
         {/* 햄버거 메뉴 버튼 (사이드바 토글) */}
         <button

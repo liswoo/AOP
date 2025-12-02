@@ -19,6 +19,12 @@ header button:hover {
   header {
     padding: 0.75rem 1rem !important; /* 모바일에서 padding 축소 */
     background-color: #1e293b !important; /* 배경색 명시 */
+    position: fixed !important; /* 스크롤 시 상단에 고정 */
+    top: 0 !important; /* 상단에 고정 */
+    left: 0 !important; /* 왼쪽 정렬 */
+    right: 0 !important; /* 오른쪽 정렬 */
+    width: 100% !important; /* 전체 너비 */
+    z-index: 100 !important; /* 다른 요소 위에 표시 */
   }
 }
 

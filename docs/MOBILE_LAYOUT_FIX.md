@@ -17,6 +17,7 @@
 
 ### 모바일 모드 (≤ 1199px)
 - **레이아웃**: 카드들이 세로로 쌓이는 Flex 레이아웃
+- **헤더**: `position: fixed`로 상단에 고정되어 스크롤 시에도 항상 보임
 - **사이드바**: 오버레이 형태로 표시 (햄버거 메뉴 클릭 시)
 - **스크롤**: body 레벨에서만 스크롤 처리
 - **그리드**: react-grid-layout의 위치 계산 무시, 자연스러운 흐름으로 렌더링
@@ -28,6 +29,93 @@
 - **스크롤**: 뷰포트 고정, 내부 스크롤 없음
 - **그리드**: 12열 그리드 시스템 사용
 - **rowHeight**: 뷰포트 높이에 맞춰 동적 계산
+
+---
+
+## 📌 모바일 헤더 Fixed 구현 방식
+
+### 구현 개요
+
+모바일 환경(1199px 이하)에서 헤더가 스크롤 시에도 상단에 고정되도록 `position: fixed`를 사용하여 구현했습니다.
+
+### 구현 방법
+
+#### 1. 헤더 CSS 설정 (`frontend/src/styles/header.css`)
+
+모바일 미디어 쿼리에서 헤더를 `position: fixed`로 설정:
+
+```css
+/* 모바일 모드 (화면 너비 < 1200px) */
+@media (max-width: 1199px) {
+  header,
+  .header {
+    /* 모바일에서 헤더를 상단에 고정 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 100; /* 다른 요소 위에 표시 */
+  }
+
+  header {
+    padding: 0 16px;
+    height: 56px;
+    min-height: 56px;
+  }
+}
+```
+
+**핵심 포인트:**
+- `position: fixed`: 뷰포트 기준으로 고정
+- `top: 0`: 상단에 고정
+- `left: 0`, `right: 0`, `width: 100%`: 전체 너비 사용
+- `z-index: 100`: 다른 요소 위에 표시
+
+#### 2. 레이아웃 여백 조정 (`frontend/src/styles/appLayout.css`)
+
+헤더가 `fixed`로 문서 흐름에서 제거되므로, 콘텐츠가 헤더 아래에 표시되도록 `app-body`에 `padding-top` 추가:
+
+```css
+/* 모바일 모드 (화면 너비 < 1200px) */
+@media (max-width: 1199px) {
+  .app-body {
+    flex-direction: column;
+    height: auto;
+    /* 헤더가 고정되어 있으므로 상단 여백 추가 */
+    padding-top: 56px; /* 헤더 높이만큼 */
+  }
+}
+```
+
+**핵심 포인트:**
+- `padding-top: 56px`: 헤더 높이(56px)만큼 여백 추가
+- 헤더가 콘텐츠를 가리지 않도록 보장
+
+### 동작 원리
+
+1. **모바일 환경 감지**: 화면 너비가 1199px 이하일 때 모바일 모드로 인식
+2. **헤더 고정**: `position: fixed`로 헤더를 뷰포트 상단에 고정
+3. **스크롤 동작**: 페이지를 스크롤해도 헤더는 항상 상단에 유지
+4. **콘텐츠 여백**: `app-body`에 헤더 높이만큼 `padding-top`을 추가하여 콘텐츠가 헤더 아래에 표시
+
+### 주의사항
+
+1. **헤더 높이 변경 시**: 헤더 높이를 변경하면 `app-body`의 `padding-top`도 함께 조정해야 합니다.
+   - 현재 헤더 높이: `56px`
+   - `app-body`의 `padding-top`: `56px`
+
+2. **z-index 관리**: 헤더의 `z-index`는 다른 고정 요소(예: 사이드바 오버레이)보다 낮게 설정되어야 합니다.
+   - 헤더: `z-index: 100`
+   - 사이드바 오버레이: `z-index: 998` (더 높음)
+
+3. **데스크톱 모드**: 데스크톱 모드(1200px 이상)에서는 헤더가 `position: relative`로 설정되어 일반적인 문서 흐름을 따릅니다.
+
+### 관련 파일
+
+- `frontend/src/styles/header.css` - 헤더 스타일 정의
+- `frontend/src/styles/appLayout.css` - 레이아웃 여백 조정
+- `frontend/src/components/Header.tsx` - 헤더 컴포넌트
 
 ---
 

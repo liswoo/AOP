@@ -13,13 +13,17 @@
  * - 모바일: 사이드바를 오버레이로 표시 (overlayOpen 상태)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/layout/Sidebar';
 import '../styles/appLayout.css';
 
 const AppLayout: React.FC = () => {
+  // Application Working! 출력
+  useEffect(() => {
+    console.log('Application Working!');
+  }, []);
   // 데스크톱에서 사이드바 펼침/접힘 상태 관리
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // 모바일에서 사이드바 오버레이 표시 상태 관리
