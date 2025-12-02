@@ -252,9 +252,12 @@ const UserDashboardPage: React.FC = () => {
   const aiPanelRef = useRef<HTMLDivElement | null>(null);
   const typingIntervalRef = useRef<NodeJS.Timeout | null>(null); // 타이핑 인터벌 참조
   
-  // 그리드 내부 확대 상태 관리
+  // 그리드 내부 확대 상태 관리 (데스크톱용)
   const [expandedGridCardId, setExpandedGridCardId] = useState<DashboardCardId | null>(null);
   const [savedLayout, setSavedLayout] = useState<Layout[] | null>(null); // 확대 전 레이아웃 저장
+  
+  // 모바일 확대 모달 상태 관리
+  const [expandedMobileCardId, setExpandedMobileCardId] = useState<DashboardCardId | null>(null);
   
   // 확대된 카드 콘텐츠 렌더링 함수를 저장할 ref (AI 분석 모드에서 사용)
   const renderExpandedCardContentRef = useRef<((cardId: DashboardCardId) => React.ReactNode) | null>(null);
@@ -275,21 +278,26 @@ const UserDashboardPage: React.FC = () => {
   // ESC 키로 AI 분석 모드 닫기
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && aiAnalysisCardId) {
-        setAiAnalysisCardId(null);
-        setAiQuestion('');
-        setAiAnswer(null);
+      if (event.key === 'Escape') {
+        if (aiAnalysisCardId) {
+          setAiAnalysisCardId(null);
+          setAiQuestion('');
+          setAiAnswer(null);
+        } else if (expandedMobileCardId) {
+          // 모바일 확대 모달 닫기
+          setExpandedMobileCardId(null);
+        }
       }
     };
 
-    if (aiAnalysisCardId) {
+    if (aiAnalysisCardId || expandedMobileCardId) {
       window.addEventListener('keydown', handleEscape);
     }
 
     return () => {
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [aiAnalysisCardId]);
+  }, [aiAnalysisCardId, expandedMobileCardId]);
 
   // 그리드 컨테이너 ref (실제 높이 측정용)
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -1038,10 +1046,23 @@ const UserDashboardPage: React.FC = () => {
   /**
    * 그리드 내부 확대/축소 핸들러
    * 
-   * 확대: 선택된 카드를 전체 폭으로 변경하고 나머지 카드는 아래로 이동
-   * 축소: 저장된 레이아웃으로 복원
+   * 데스크톱: 선택된 카드를 전체 폭으로 변경하고 나머지 카드는 아래로 이동
+   * 모바일: 전체화면 모달로 카드 표시
    */
   const handleToggleExpand = (cardId: DashboardCardId) => {
+    // 모바일인 경우 전체화면 모달로 표시
+    if (isMobile) {
+      if (expandedMobileCardId === cardId) {
+        // 이미 확대된 카드를 다시 클릭하면 닫기
+        setExpandedMobileCardId(null);
+      } else {
+        // 새로운 카드 확대
+        setExpandedMobileCardId(cardId);
+      }
+      return;
+    }
+    
+    // 데스크톱: 기존 그리드 확대 로직
     setLayout((currentLayout) => {
       if (!expandedGridCardId || expandedGridCardId !== cardId) {
         // 확대 시작
@@ -1360,43 +1381,63 @@ const UserDashboardPage: React.FC = () => {
      * 확대된 카드의 콘텐츠 렌더링
      * 
      * 기존 renderCard와 동일한 로직이지만, 확대된 화면에 맞게 높이를 조정합니다.
+     * 모바일에서는 모달 크기에 맞게 컨텐츠를 확대합니다.
      */
     const renderExpandedCardContent = (cardId: DashboardCardId) => {
+      // 모바일에서는 모달 높이의 70%를 차트 높이로 사용 (헤더와 패딩 제외)
+      const mobileModalHeight = Math.floor(window.innerHeight * 0.9); // 모달 높이 (90vh)
+      const mobileContentHeight = Math.floor(mobileModalHeight * 0.7); // 콘텐츠 영역 높이
+      const chartHeight = isMobile 
+        ? `${mobileContentHeight}px` 
+        : '500px';
+      
       switch (cardId) {
         case 'profit':
           return (
-            <table style={{ ...styles.profitTable, width: '100%' }}>
-              <thead>
-                <tr>
-                  <th style={styles.tableHeader}>구분</th>
-                  <th style={styles.tableHeader}>전년</th>
-                  <th style={styles.tableHeader}>당년</th>
-                  <th style={styles.tableHeader}>달성률</th>
-                  <th style={styles.tableHeader}>성장률</th>
-                </tr>
-              </thead>
-              <tbody>
-                {profitLossData.map((row, index) => (
-                  <tr key={index}>
-                    <td style={styles.tableCell}>{row.label}</td>
-                    <td style={styles.tableCell}>{row.prevYear.toLocaleString()}</td>
-                    <td style={styles.tableCell}>{row.currentYear.toLocaleString()}</td>
-                    <td style={styles.tableCell}>{row.achievement.toFixed(1)}%</td>
-                    <td style={{
-                      ...styles.tableCell,
-                      color: row.isPositive ? '#10b981' : '#ef4444',
-                    }}>
-                      {row.isPositive ? '▲' : '▼'}{Math.abs(row.growth).toFixed(1)}%
-                    </td>
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <table style={{ 
+                ...styles.profitTable, 
+                width: '100%',
+                fontSize: isMobile ? '1.1rem' : '0.9rem', // 모바일에서 폰트 크기 증가
+              }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...styles.tableHeader, fontSize: isMobile ? '1rem' : '0.85rem', padding: isMobile ? '12px 8px' : '8px' }}>구분</th>
+                    <th style={{ ...styles.tableHeader, fontSize: isMobile ? '1rem' : '0.85rem', padding: isMobile ? '12px 8px' : '8px' }}>전년</th>
+                    <th style={{ ...styles.tableHeader, fontSize: isMobile ? '1rem' : '0.85rem', padding: isMobile ? '12px 8px' : '8px' }}>당년</th>
+                    <th style={{ ...styles.tableHeader, fontSize: isMobile ? '1rem' : '0.85rem', padding: isMobile ? '12px 8px' : '8px' }}>달성률</th>
+                    <th style={{ ...styles.tableHeader, fontSize: isMobile ? '1rem' : '0.85rem', padding: isMobile ? '12px 8px' : '8px' }}>성장률</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {profitLossData.map((row, index) => (
+                    <tr key={index}>
+                      <td style={{ ...styles.tableCell, fontSize: isMobile ? '1rem' : undefined, padding: isMobile ? '12px 8px' : '8px' }}>{row.label}</td>
+                      <td style={{ ...styles.tableCell, fontSize: isMobile ? '1rem' : undefined, padding: isMobile ? '12px 8px' : '8px' }}>{row.prevYear.toLocaleString()}</td>
+                      <td style={{ ...styles.tableCell, fontSize: isMobile ? '1rem' : undefined, padding: isMobile ? '12px 8px' : '8px' }}>{row.currentYear.toLocaleString()}</td>
+                      <td style={{ ...styles.tableCell, fontSize: isMobile ? '1rem' : undefined, padding: isMobile ? '12px 8px' : '8px' }}>{row.achievement.toFixed(1)}%</td>
+                      <td style={{
+                        ...styles.tableCell,
+                        fontSize: isMobile ? '1rem' : undefined,
+                        padding: isMobile ? '12px 8px' : '8px',
+                        color: row.isPositive ? '#10b981' : '#ef4444',
+                      }}>
+                        {row.isPositive ? '▲' : '▼'}{Math.abs(row.growth).toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           );
 
         case 'quality':
           return (
-            <div className="chart-container" style={{ height: '500px' }}>
+            <div className="chart-container" style={{ 
+              height: chartHeight, 
+              minHeight: isMobile ? '400px' : '300px',
+              width: '100%',
+            }}>
               <Radar data={qualityRadarData} options={{
                 ...chartOptions,
                 scales: {
@@ -1405,12 +1446,18 @@ const UserDashboardPage: React.FC = () => {
                     max: 100,
                     ticks: {
                       color: '#94a3b8',
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
                     },
                     grid: {
                       color: 'rgba(148, 163, 184, 0.1)',
                     },
                     pointLabels: {
                       color: '#cbd5e1',
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
                     },
                   },
                 },
@@ -1420,8 +1467,47 @@ const UserDashboardPage: React.FC = () => {
 
         case 'stock':
           return inventoryBarData ? (
-            <div className="chart-container" style={{ height: '500px' }}>
-              <Bar data={inventoryBarData} options={chartOptions} />
+            <div className="chart-container" style={{ 
+              height: chartHeight, 
+              minHeight: isMobile ? '400px' : '300px',
+              width: '100%',
+            }}>
+              <Bar data={inventoryBarData} options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  legend: {
+                    ...chartOptions.plugins.legend,
+                    labels: {
+                      ...chartOptions.plugins.legend.labels,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  ...chartOptions.scales,
+                  x: {
+                    ...chartOptions.scales.x,
+                    ticks: {
+                      ...chartOptions.scales.x.ticks,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
+                  },
+                  y: {
+                    ...chartOptions.scales.y,
+                    ticks: {
+                      ...chartOptions.scales.y.ticks,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
+                  },
+                },
+              }} />
             </div>
           ) : (
             <div style={styles.loading}>데이터 로딩 중...</div>
@@ -1429,8 +1515,47 @@ const UserDashboardPage: React.FC = () => {
 
         case 'trend':
           return salesTrendLineData ? (
-            <div className="chart-container" style={{ height: '500px' }}>
-              <Line data={salesTrendLineData} options={chartOptions} />
+            <div className="chart-container" style={{ 
+              height: chartHeight, 
+              minHeight: isMobile ? '400px' : '300px',
+              width: '100%',
+            }}>
+              <Line data={salesTrendLineData} options={{
+                ...chartOptions,
+                plugins: {
+                  ...chartOptions.plugins,
+                  legend: {
+                    ...chartOptions.plugins.legend,
+                    labels: {
+                      ...chartOptions.plugins.legend.labels,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  ...chartOptions.scales,
+                  x: {
+                    ...chartOptions.scales.x,
+                    ticks: {
+                      ...chartOptions.scales.x.ticks,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
+                  },
+                  y: {
+                    ...chartOptions.scales.y,
+                    ticks: {
+                      ...chartOptions.scales.y.ticks,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
+                  },
+                },
+              }} />
             </div>
           ) : (
             <div style={styles.loading}>데이터 로딩 중...</div>
@@ -1439,35 +1564,89 @@ const UserDashboardPage: React.FC = () => {
         case 'people':
           return (
             <>
-              <div style={styles.personnelSummary}>
+              <div style={{
+                ...styles.personnelSummary,
+                fontSize: isMobile ? '1.1rem' : undefined, // 모바일에서 폰트 크기 증가
+                marginBottom: isMobile ? '20px' : '1rem',
+              }}>
                 <div style={styles.personnelItem}>
-                  <span style={styles.personnelLabel}>총 인원:</span>
-                  <span style={styles.personnelValue}>{personnelSummary.total}명</span>
+                  <span style={{ ...styles.personnelLabel, fontSize: isMobile ? '1rem' : undefined }}>총 인원:</span>
+                  <span style={{ ...styles.personnelValue, fontSize: isMobile ? '1.5rem' : '1.2rem' }}>{personnelSummary.total}명</span>
                 </div>
                 <div style={styles.personnelItem}>
-                  <span style={styles.personnelLabel}>SI:</span>
-                  <span style={styles.personnelValue}>{personnelSummary.si}명</span>
+                  <span style={{ ...styles.personnelLabel, fontSize: isMobile ? '1rem' : undefined }}>SI:</span>
+                  <span style={{ ...styles.personnelValue, fontSize: isMobile ? '1.5rem' : '1.2rem' }}>{personnelSummary.si}명</span>
                 </div>
                 <div style={styles.personnelItem}>
-                  <span style={styles.personnelLabel}>SM:</span>
-                  <span style={styles.personnelValue}>{personnelSummary.sm}명</span>
+                  <span style={{ ...styles.personnelLabel, fontSize: isMobile ? '1rem' : undefined }}>SM:</span>
+                  <span style={{ ...styles.personnelValue, fontSize: isMobile ? '1.5rem' : '1.2rem' }}>{personnelSummary.sm}명</span>
                 </div>
               </div>
-              <div className="chart-container" style={{ height: '400px', marginTop: '20px' }}>
-                <Bar data={personnelBarData} options={chartOptions} />
+              <div className="chart-container" style={{ 
+                height: isMobile ? `${Math.floor(mobileContentHeight * 0.7)}px` : '400px', 
+                marginTop: '20px',
+                minHeight: isMobile ? '350px' : '250px',
+                width: '100%',
+              }}>
+                <Bar data={personnelBarData} options={{
+                  ...chartOptions,
+                  plugins: {
+                    ...chartOptions.plugins,
+                    legend: {
+                      ...chartOptions.plugins.legend,
+                      labels: {
+                        ...chartOptions.plugins.legend.labels,
+                        font: {
+                          size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                        },
+                      },
+                    },
+                  },
+                  scales: {
+                    ...chartOptions.scales,
+                    x: {
+                      ...chartOptions.scales.x,
+                      ticks: {
+                        ...chartOptions.scales.x.ticks,
+                        font: {
+                          size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                        },
+                      },
+                    },
+                    y: {
+                      ...chartOptions.scales.y,
+                      ticks: {
+                        ...chartOptions.scales.y.ticks,
+                        font: {
+                          size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                        },
+                      },
+                    },
+                  },
+                }} />
               </div>
             </>
           );
 
         case 'downtime':
           return downtimeDoughnutData ? (
-            <div className="chart-container" style={{ height: '500px' }}>
+            <div className="chart-container" style={{ 
+              height: chartHeight, 
+              minHeight: isMobile ? '400px' : '300px',
+              width: '100%',
+            }}>
               <Doughnut data={downtimeDoughnutData} options={{
                 ...chartOptions,
                 plugins: {
                   ...chartOptions.plugins,
                   legend: {
-                    position: 'right' as const,
+                    position: isMobile ? ('bottom' as const) : ('right' as const), // 모바일에서는 하단에 표시
+                    labels: {
+                      ...chartOptions.plugins.legend.labels,
+                      font: {
+                        size: isMobile ? 14 : 12, // 모바일에서 폰트 크기 증가
+                      },
+                    },
                   },
                 },
               }} />
@@ -2319,6 +2498,45 @@ const UserDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 모바일 카드 확대 모달 */}
+      {expandedMobileCardId && isMobile && (
+        <div 
+          className="dashboard-mobile-expand-overlay"
+          onClick={(e) => {
+            // 배경 클릭 시 닫기 (패널 클릭은 제외)
+            if (e.target === e.currentTarget) {
+              setExpandedMobileCardId(null);
+            }
+          }}
+        >
+          <div 
+            className="dashboard-mobile-expand-panel"
+            onClick={(e) => e.stopPropagation()} // 패널 클릭 시 이벤트 전파 방지
+          >
+            {/* 상단 헤더: 제목, 닫기 버튼 */}
+            <div className="dashboard-mobile-expand-header">
+              <h2 style={styles.mobileExpandHeaderTitle}>
+                {getCardTitle(expandedMobileCardId)}
+              </h2>
+              <button
+                onClick={() => setExpandedMobileCardId(null)}
+                style={styles.mobileExpandCloseButton}
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 확대된 카드 콘텐츠 */}
+            <div className="dashboard-mobile-expand-content">
+              {renderExpandedCardContentRef.current
+                ? renderExpandedCardContentRef.current(expandedMobileCardId)
+                : null}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -2637,6 +2855,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'opacity 0.2s, transform 0.2s',
+  },
+  // 모바일 확대 모달 스타일
+  mobileExpandHeaderTitle: {
+    margin: 0,
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    color: '#f1f5f9', // 다크 테마: 밝은 텍스트
+  },
+  mobileExpandCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.5rem',
+    color: '#94a3b8', // 다크 테마: 회색 텍스트
+    cursor: 'pointer',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    transition: 'background-color 0.2s, color 0.2s',
   },
 };
 
