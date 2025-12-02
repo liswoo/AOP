@@ -15,7 +15,7 @@ import '../styles/header.css';
 
 interface HeaderProps {
   onToggleSidebar?: () => void; // 데스크톱 사이드바 토글 핸들러
-  onOpenMobileSidebar?: () => void; // 모바일 사이드바 열기 핸들러
+  onOpenMobileSidebar?: () => void; // 모바일 사이드바 토글 핸들러
 }
 
 /**
@@ -27,8 +27,8 @@ interface HeaderProps {
  * - 우측: 로그인한 사용자 이름, 로그아웃 버튼
  * 
  * 동작:
- * - 데스크톱: 햄버거 버튼 클릭 시 onToggleSidebar 호출
- * - 모바일: 햄버거 버튼 클릭 시 onOpenMobileSidebar 호출
+ * - 데스크톱: 햄버거 버튼 클릭 시 onToggleSidebar 호출 (토글)
+ * - 모바일: 햄버거 버튼 클릭 시 onOpenMobileSidebar 호출 (토글)
  */
 const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,

@@ -40,13 +40,13 @@ const AppLayout: React.FC = () => {
   };
 
   /**
-   * 모바일 사이드바 열기 핸들러
+   * 모바일 사이드바 토글 핸들러
    * 
    * 모바일 환경에서 Header의 햄버거 버튼을 클릭하면 호출됩니다.
-   * 사이드바를 오버레이로 표시합니다.
+   * 사이드바를 오버레이로 표시하거나 닫습니다.
    */
   const handleOpenMobileSidebar = () => {
-    setSidebarOverlayOpen(true);
+    setSidebarOverlayOpen(prev => !prev);
   };
 
   /**
