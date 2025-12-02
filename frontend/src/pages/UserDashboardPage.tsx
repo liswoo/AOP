@@ -1132,9 +1132,10 @@ const UserDashboardPage: React.FC = () => {
         setExpandedGridCardId(cardId);
 
         const cols = 12; // 그리드 열 수
-        const expandedHeight = Math.max(...currentLayout.map((l) => l.h), 6); // 최소 높이 6
+        // 확대 시 높이는 항상 기본 카드 크기(6개 칸)로 고정
+        const expandedHeight = ROW_HEIGHT; // 항상 6으로 고정
 
-        // 2) 선택된 카드를 전체 폭으로 변경
+        // 2) 선택된 카드를 전체 폭으로 변경 (높이는 항상 12로 고정)
         const newLayout = currentLayout.map((item) => {
           if (item.i === cardId) {
             return {
@@ -1142,13 +1143,13 @@ const UserDashboardPage: React.FC = () => {
               x: 0,
               y: 0,
               w: cols,
-              h: expandedHeight * 2, // 확대 시 높이 2배
+              h: expandedHeight * 2, // 확대 시 높이 2배 (12로 고정)
             };
           }
           // 나머지 카드는 아래로 이동
           return {
             ...item,
-            y: item.y + expandedHeight * 2,
+            y: item.y + expandedHeight * 2, // 12만큼 아래로 이동
           };
         });
 
