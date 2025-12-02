@@ -93,14 +93,15 @@ const GRID_MARGIN = 12;
 
 /**
  * 활성화된 대시보드 카드 목록을 받아서
- * 카드 개수에 따라 1~3열 프리셋 레이아웃을 계산하는 함수입니다.
+ * 카드 개수에 따라 빈 공간 없이 화면을 가득 채우는 레이아웃을 계산하는 함수입니다.
  * 
- * 규칙:
- * - 1개: 1열(풀폭)
- * - 2개: 2열
- * - 3개: 3열
- * - 4개: 2열 × 2행
- * - 5개 이상: 3열(최대 6개)
+ * 규칙 (데스크톱, 12열 기준):
+ * - 1개: 전체 너비(12), 전체 높이(12)
+ * - 2개: 각각 6 너비, 전체 높이(12) - 가로로 나란히
+ * - 3개: 각각 4 너비, 전체 높이(12) - 가로로 나란히
+ * - 4개: 각각 6 너비, 6 높이 - 2행 2열
+ * - 5개: 각각 4 너비, 6 높이 (3개) + 각각 6 너비, 6 높이 (2개) - 2행
+ * - 6개: 각각 4 너비, 6 높이 - 2행 3열
  * 
  * 이렇게 정해진 규칙으로만 레이아웃을 자동 재배치하여
  * 화면 공간을 효율적으로 쓰면서도
@@ -111,40 +112,100 @@ const GRID_MARGIN = 12;
 function computeLayout(activeCards: DashboardCardId[], cols: number = 12): Layout[] {
   const n = activeCards.length;
 
-  // 카드 개수와 그리드 열 수에 따라 컬럼 수 결정
-  let colCount: number;
+  // 모바일 (xxs, xs): 세로 스택
   if (cols <= 2) {
-    // 모바일 (xxs, xs): 1열 (세로 스택 허용)
-    colCount = 1;
-  } else {
-    // 데스크톱/태블릿 (lg, md, sm): 2행 3열 유지
-    // sm 브레이크포인트(1200px) 이상에서는 항상 3열로 처리
-    colCount =
-      n <= 1 ? 1 :
-      n === 2 ? 2 :
-      n === 3 ? 3 :
-      n === 4 ? 2 :
-      3; // 5~6개는 3열
+    return activeCards.map((id, index) => ({
+      i: id,
+      x: 0,
+      y: index * ROW_HEIGHT,
+      w: cols,
+      h: ROW_HEIGHT,
+    }));
   }
 
-  // 각 카드의 너비 (그리드 열 수 기준)
-  const w = Math.floor(cols / colCount);
-  // 각 카드의 높이 (공통 값)
-  const h = ROW_HEIGHT;
+  // 데스크톱/태블릿 (lg, md, sm): 12열 기준
+  const totalRows = 2 * ROW_HEIGHT; // 총 12행 (2행 × 6)
+  const totalCols = cols; // 12열
 
-  // 각 카드의 위치 계산
-  return activeCards.map((id, index) => {
-    const row = Math.floor(index / colCount);
-    const col = index % colCount;
-
-    return {
+  // 카드 개수에 따라 레이아웃 계산
+  if (n === 1) {
+    // 1개: 전체 화면
+    return [{
+      i: activeCards[0],
+      x: 0,
+      y: 0,
+      w: totalCols,
+      h: totalRows,
+    }];
+  } else if (n === 2) {
+    // 2개: 가로로 나란히, 각각 전체 높이
+    return activeCards.map((id, index) => ({
       i: id,
-      x: col * w,
-      y: row * h,
-      w,
-      h,
-    };
-  });
+      x: index * (totalCols / 2),
+      y: 0,
+      w: totalCols / 2,
+      h: totalRows,
+    }));
+  } else if (n === 3) {
+    // 3개: 가로로 나란히, 각각 전체 높이
+    return activeCards.map((id, index) => ({
+      i: id,
+      x: index * (totalCols / 3),
+      y: 0,
+      w: totalCols / 3,
+      h: totalRows,
+    }));
+  } else if (n === 4) {
+    // 4개: 2행 2열
+    return activeCards.map((id, index) => {
+      const row = Math.floor(index / 2);
+      const col = index % 2;
+      return {
+        i: id,
+        x: col * (totalCols / 2),
+        y: row * ROW_HEIGHT,
+        w: totalCols / 2,
+        h: ROW_HEIGHT,
+      };
+    });
+  } else if (n === 5) {
+    // 5개: 첫 번째 행에 3개(각 4 너비), 두 번째 행에 2개(각 6 너비)
+    return activeCards.map((id, index) => {
+      if (index < 3) {
+        // 첫 번째 행: 3개
+        return {
+          i: id,
+          x: index * (totalCols / 3),
+          y: 0,
+          w: totalCols / 3,
+          h: ROW_HEIGHT,
+        };
+      } else {
+        // 두 번째 행: 2개
+        const secondRowIndex = index - 3;
+        return {
+          i: id,
+          x: secondRowIndex * (totalCols / 2),
+          y: ROW_HEIGHT,
+          w: totalCols / 2,
+          h: ROW_HEIGHT,
+        };
+      }
+    });
+  } else {
+    // 6개: 2행 3열 (기본 레이아웃)
+    return activeCards.map((id, index) => {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      return {
+        i: id,
+        x: col * (totalCols / 3),
+        y: row * ROW_HEIGHT,
+        w: totalCols / 3,
+        h: ROW_HEIGHT,
+      };
+    });
+  }
 }
 
 /**
@@ -1927,35 +1988,28 @@ const UserDashboardPage: React.FC = () => {
           onLayoutChange={(currentLayout) => {
             // 확대 상태가 아닐 때만 레이아웃 업데이트
             if (!expandedGridCardId) {
-              // 1200px 이상에서는 드래그 중에도 2행 3열로 제한 및 위치 교환
+              // 1200px 이상에서는 카드 개수에 따라 동적으로 레이아웃 검증
               const isDesktopOrTablet = window.innerWidth >= 1200;
               
               if (isDesktopOrTablet) {
-                // 2행 3열 범위 내에서만 이동 허용
-                const cols = 12;
-                const cardWidth = cols / 3; // 4
-                const maxY = ROW_HEIGHT; // 6
+                // 카드 개수에 따라 baseLayout을 기준으로 검증
+                // 드래그 중에는 위치만 교환하고, 크기는 baseLayout 기준으로 유지
+                const expectedLayout = computeLayout(activeCards, 12);
                 
+                // baseLayout과 비교하여 위치만 업데이트하고 크기는 유지
                 let validatedLayout = currentLayout.map((item) => {
-                  // y는 0 또는 6만 허용 (가장 가까운 행으로 스냅)
-                  let validY: number;
-                  if (item.y <= ROW_HEIGHT / 2) {
-                    validY = 0; // 첫 번째 행
-                  } else {
-                    validY = maxY; // 두 번째 행 (6보다 크면 무조건 6으로 제한)
+                  const expectedItem = expectedLayout.find(l => l.i === item.i);
+                  if (expectedItem) {
+                    // baseLayout의 크기와 위치를 사용
+                    return {
+                      ...item,
+                      x: expectedItem.x,
+                      y: expectedItem.y,
+                      w: expectedItem.w,
+                      h: expectedItem.h,
+                    };
                   }
-                  
-                  // x는 0, 4, 8만 허용 (가장 가까운 열로 스냅)
-                  const validX = Math.round(item.x / cardWidth) * cardWidth;
-                  const clampedX = Math.max(0, Math.min(cols - cardWidth, validX));
-                  
-                  return {
-                    ...item,
-                    x: clampedX,
-                    y: validY,
-                    w: cardWidth,
-                    h: ROW_HEIGHT,
-                  };
+                  return item;
                 });
                 
                 // 위치 교환: 드래그 중인 카드가 다른 카드의 위치로 이동하면 위치 교환
@@ -2183,10 +2237,10 @@ const UserDashboardPage: React.FC = () => {
               setIsDockTargetActive(false);
               dragStartPositionRef.current = null; // 원래 위치 ref 초기화
               
-              // 드래그 종료 후 레이아웃 검증 (모바일 진입 전까지 2행 3열로 제한)
+              // 드래그 종료 후 레이아웃 검증 (카드 개수에 따라 동적으로 처리)
               setTimeout(() => {
                 setLayout((currentLayout) => {
-                  // 1200px 이상에서는 2행 3열로 제한
+                  // 1200px 이상에서는 카드 개수에 따라 baseLayout 기준으로 검증
                   // xs 이하(480px 미만)에서는 세로 스택 허용
                   const isDesktopOrTablet = window.innerWidth >= 1200;
                   
@@ -2194,35 +2248,22 @@ const UserDashboardPage: React.FC = () => {
                     return currentLayout; // 모바일(xs, xxs)은 그대로 (세로 스택 허용)
                   }
                   
-                  // 2행 3열 범위 내에서만 이동 허용
-                  const cols = 12;
-                  const cardWidth = cols / 3; // 4
-                  const maxY = ROW_HEIGHT; // 6 (2행이므로 최대 y는 6)
+                  // baseLayout을 기준으로 검증
+                  const expectedLayout = computeLayout(activeCards, 12);
                   
+                  // baseLayout과 비교하여 위치와 크기를 맞춤
                   const validatedLayout = currentLayout.map((item) => {
-                    // y는 0 또는 6만 허용 (가장 가까운 행으로 스냅)
-                    // y가 6보다 크면 무조건 6으로 제한 (3행 방지)
-                    let validY: number;
-                    if (item.y <= ROW_HEIGHT / 2) {
-                      validY = 0; // 첫 번째 행
-                    } else if (item.y > maxY) {
-                      validY = maxY; // 6보다 크면 무조건 두 번째 행
-                    } else {
-                      validY = maxY; // 두 번째 행
+                    const expectedItem = expectedLayout.find(l => l.i === item.i);
+                    if (expectedItem) {
+                      return {
+                        ...item,
+                        x: expectedItem.x,
+                        y: expectedItem.y,
+                        w: expectedItem.w,
+                        h: expectedItem.h,
+                      };
                     }
-                    
-                    // x는 0, 4, 8만 허용 (가장 가까운 열로 스냅)
-                    const validX = Math.round(item.x / cardWidth) * cardWidth;
-                    const clampedX = Math.max(0, Math.min(cols - cardWidth, validX));
-                    
-                    // w는 4로 고정, h는 6으로 고정
-                    return {
-                      ...item,
-                      x: clampedX,
-                      y: validY,
-                      w: cardWidth,
-                      h: ROW_HEIGHT,
-                    };
+                    return item;
                   });
                   
                   // 레이아웃이 변경되었는지 확인
