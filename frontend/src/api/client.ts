@@ -86,14 +86,11 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
         
-        // /auth/me 호출 실패 시에는 alert를 띄우지 않음 (초기화 중일 수 있음)
-        // 다른 API 호출 실패 시에만 alert 표시
+        // /auth/me 호출 실패 시에는 alert를 띄우지 않고 리다이렉트도 하지 않음 (초기화 중일 수 있음)
+        // 다른 API 호출 실패 시에는 자동으로 로그인 페이지로 리다이렉트
         if (url !== '/auth/me') {
-          if (status === 401) {
-            alert('로그인이 필요합니다. 다시 로그인해주세요.');
-          } else {
-            alert('접근 권한이 없습니다.');
-          }
+          // 자동으로 로그인 페이지로 리다이렉트 (전체 페이지 리로드)
+          window.location.href = '/login';
         }
       } else {
         // 다른 에러 (400, 500 등)

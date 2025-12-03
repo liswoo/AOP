@@ -604,6 +604,15 @@ const UserDashboardPage: React.FC = () => {
     } catch (err: any) {
       // 에러 발생 시 에러 메시지 저장
       console.error('대시보드 데이터 로드 실패:', err);
+      
+      // 401/403 에러인 경우 (토큰 만료 등) 자동으로 로그인 페이지로 리다이렉트
+      // client.ts의 인터셉터에서 이미 처리하지만, 여기서도 확인하여 에러 메시지를 표시하지 않음
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        // 토큰 만료 등의 인증 에러는 client.ts에서 이미 리다이렉트 처리됨
+        // 여기서는 에러 메시지를 표시하지 않음
+        return;
+      }
+      
       let errorMessage = '대시보드 데이터를 불러오는데 실패했습니다.';
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
@@ -2399,13 +2408,16 @@ const UserDashboardPage: React.FC = () => {
         {error && (
           <div style={styles.errorContainer}>
             <div style={styles.error}>{error}</div>
-            <button
-              onClick={handleSearch}
-              style={styles.retryButton}
-              disabled={isLoading}
-            >
-              다시 시도
-            </button>
+            {/* 토큰 만료나 로그인 관련 에러가 아닌 경우에만 "다시 시도" 버튼 표시 */}
+            {!error.includes('토큰') && !error.includes('만료') && !error.includes('로그인') && !error.includes('인증') && (
+              <button
+                onClick={handleSearch}
+                style={styles.retryButton}
+                disabled={isLoading}
+              >
+                다시 시도
+              </button>
+            )}
           </div>
         )}
 
