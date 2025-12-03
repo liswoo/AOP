@@ -336,6 +336,195 @@ useEffect(() => {
 }, []);
 ```
 
+## Reports 페이지 테이블 무한 확장 문제
+
+### 문제 상황
+
+Reports 페이지에서 Handsontable을 사용한 테이블이 표시될 때:
+1. **테이블 아래 흰색 화면이 무한히 늘어남**: 콘텐츠보다 훨씬 큰 빈 공간이 생성됨
+2. **ResizeObserver 무한 루프**: 콘솔에 "ResizeObserver callback was fired too many times" 경고 발생
+3. **레이아웃 깨짐**: 모바일에서 특히 심각하게 발생
+
+### 원인 분석
+
+1. **높이 제한 문제**: 모바일에서도 `height: calc(100vh - 64px)` 같은 고정 높이가 적용되어 콘텐츠가 작아도 최소 높이가 유지됨
+2. **Flex 레이아웃 문제**: `flex: 1`이 모바일에서도 적용되어 컨테이너가 뷰포트 높이에 맞춰 늘어남
+3. **ResizeObserver 무한 루프**: Handsontable의 ResizeObserver가 컨테이너 높이 변화를 감지하면서 무한 루프 발생
+   - 컨테이너 높이 변경 → ResizeObserver 트리거 → 컬럼 너비 재계산 → 레이아웃 변경 → 컨테이너 높이 변경 → 반복
+
+### 해결 방법
+
+#### 1. ReportsPage.css 수정
+
+모바일에서 모든 높이 제한을 제거하고 자연스러운 높이로 설정:
+
+```css
+/* 모바일 모드 (≤ 1199px) */
+@media (max-width: 1199px) {
+  .reports-page {
+    /* 높이 제한 완전 제거 */
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important; /* 스크롤은 body에서 처리 */
+    padding: 16px;
+  }
+  
+  .reports-page-content {
+    /* 높이 제한 제거 */
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  
+  .reports-card {
+    /* 높이 제한 제거 */
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  
+  .reports-card-body {
+    /* 높이 제한 제거 및 overflow 제거 */
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+```
+
+#### 2. WorkshopKpiSheet.css 수정
+
+모바일에서 컨테이너의 높이 제한 제거:
+
+```css
+/* 모바일 모드 (≤ 1199px): 높이 제한 제거 */
+@media (max-width: 1199px) {
+  .workshop-kpi-sheet-container {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+```
+
+#### 3. WorkshopKpiSheet.tsx 수정
+
+ResizeObserver에 debounce 추가 및 무한 루프 방지:
+
+```typescript
+useLayoutEffect(() => {
+  const container = containerRef.current;
+  if (!container) return;
+
+  let timeoutId: NodeJS.Timeout | null = null;
+  let lastWidth = 0;
+
+  const calcColWidths = () => {
+    const totalWidth = container.clientWidth;
+    if (!totalWidth || totalWidth <= 0) return;
+    
+    // 너비가 변경되지 않았으면 계산하지 않음 (무한 루프 방지)
+    if (totalWidth === lastWidth) return;
+    lastWidth = totalWidth;
+
+    // ... 컬럼 너비 계산 로직
+  };
+
+  // 초기 1회 계산
+  calcColWidths();
+  lastWidth = container.clientWidth;
+
+  // 리사이즈 대응 (debounce 적용)
+  const ro = new ResizeObserver((entries) => {
+    // 이전 타이머 취소
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    
+    // debounce: 100ms 후에 실행
+    timeoutId = setTimeout(() => {
+      const entry = entries[0];
+      if (entry) {
+        const newWidth = entry.contentRect.width;
+        // 너비만 확인 (높이 변화는 무시하여 무한 루프 방지)
+        if (newWidth !== lastWidth && newWidth > 0) {
+          calcColWidths();
+        }
+      }
+    }, 100);
+  });
+  
+  ro.observe(container);
+
+  return () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    ro.disconnect();
+  };
+}, [columnCount]);
+```
+
+#### 4. Handsontable 높이 설정
+
+모바일에서는 Handsontable의 높이를 자동으로 계산하도록 설정:
+
+```typescript
+// 모바일 여부 상태 (1200px 기준)
+const [isMobile, setIsMobile] = useState(false);
+
+useEffect(() => {
+  const checkMobile = () => {
+    const viewportWidth = window.innerWidth;
+    setIsMobile(viewportWidth < 1200);
+  };
+
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
+
+// HotTable에서
+<HotTable
+  height={isMobile ? undefined : height} // 모바일에서는 높이 자동 계산, 데스크톱에서는 지정된 높이 사용
+  // ... 기타 props
+/>
+```
+
+### 해결 원리
+
+1. **높이 제한 제거**: 모든 `min-height`, `max-height`, `height: calc()` 제거하여 콘텐츠 높이에 맞춰 자연스럽게 늘어나도록
+2. **Flex 제거**: 모바일에서 `flex: 1`을 `flex: none`으로 변경하여 뷰포트 높이에 맞춰 늘어나지 않도록
+3. **Overflow 제거**: 모든 컨테이너의 `overflow`를 `visible`로 설정하여 내부 스크롤 방지
+4. **ResizeObserver 최적화**: 
+   - debounce 추가 (100ms)하여 빈번한 호출 방지
+   - 너비만 관찰하고 높이 변화는 무시하여 무한 루프 방지
+   - 이전 너비와 비교하여 실제 변경 시에만 계산
+
+### 주의사항
+
+1. **ResizeObserver 사용 시**: 
+   - 항상 debounce를 적용하여 무한 루프 방지
+   - 높이 변화가 레이아웃에 영향을 주는 경우에만 높이를 관찰
+   - 너비만 필요한 경우 높이 관찰을 피할 것
+
+2. **Handsontable 사용 시**:
+   - 모바일에서는 `height` prop을 `undefined`로 설정하여 자동 높이 계산
+   - 데스크톱에서는 고정 높이를 사용하여 성능 최적화
+
+3. **모바일 레이아웃**:
+   - 모든 높이 제한을 제거하고 콘텐츠 높이에 맞춰 자연스럽게 늘어나도록 설정
+   - `flex: 1` 대신 `flex: none` 사용
+
 ## 코드 참고 시 주의사항
 
 ### ⚠️ 절대 하지 말아야 할 것
@@ -393,11 +582,15 @@ useEffect(() => {
 - `frontend/src/styles/dashboardCard.css` - 카드 스타일 (1200px 기준)
 - `frontend/src/styles/header.css` - 헤더 스타일 (1200px 기준)
 - `frontend/src/styles/reports.css` - 리포트 스타일 (1200px 기준)
+- `frontend/src/pages/ReportsPage.css` - 리포트 페이지 스타일 (1200px 기준)
+- `frontend/src/components/report/WorkshopKpiSheet.css` - Workshop KPI 시트 스타일
 
 ### TypeScript 파일
 - `frontend/src/pages/UserDashboardPage.tsx` - 대시보드 페이지 (모바일/데스크톱 전환 로직)
+- `frontend/src/pages/ReportsPage.tsx` - 리포트 페이지 (검색/선택, Period 필터)
 - `frontend/src/components/Header.tsx` - 헤더 컴포넌트 (사이드바 토글)
 - `frontend/src/components/admin/AdminHeader.tsx` - 관리자 헤더 컴포넌트
+- `frontend/src/components/report/WorkshopKpiSheet.tsx` - Workshop KPI 시트 컴포넌트
 
 ## 관련 문서
 

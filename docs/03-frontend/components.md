@@ -124,8 +124,34 @@ const { user, login, logout, isAuthenticated } = useAuth();
 **설명**: 리포트 페이지
 
 **주요 기능**:
+- 여러 리포트 검색 및 선택
+  - 검색창: 리포트 제목, 부제목, ID로 실시간 검색
+  - 선택창: 필터링된 리포트 목록에서 선택
+  - 검색 결과 개수 표시
+  - 검색 결과가 없을 때 명확한 피드백
+  - 검색 결과에 따라 자동 선택
+- Period 필터 기능
+  - Last 7 Days, This Month, Last Month, Custom Range 옵션
+  - Custom Range 선택 시 날짜 입력 필드 표시
 - Workshop KPI Sheet 표시
-- Handsontable을 사용한 스프레드시트
+  - Handsontable을 사용한 스프레드시트
+  - Period 필터에 따라 Period 텍스트 자동 업데이트
+- 반응형 레이아웃 지원
+  - 1200px 기준 모바일/데스크톱 구분
+  - 모바일: 필터 바 세로 배치, 검색창과 선택창 세로 배치
+  - 데스크톱: 필터 바 가로 배치, 검색창과 선택창 가로 배치
+
+**검색 기능 사용법**:
+1. 검색창에 키워드 입력 (예: "Workshop", "KPI", "01")
+2. 검색 결과가 드롭다운에 필터링되어 표시됨
+3. 검색 결과 개수가 검색창 옆에 표시됨
+4. 검색 결과가 있으면 첫 번째 결과가 자동으로 선택됨
+5. 드롭다운에서 원하는 리포트 선택
+
+**Period 필터 사용법**:
+1. Period 옵션 선택 (Last 7 Days, This Month, Last Month, Custom Range)
+2. Custom Range 선택 시 시작일과 종료일 입력
+3. 선택한 기간에 따라 리포트의 Period 텍스트가 자동 업데이트됨
 
 ## 공통 컴포넌트
 

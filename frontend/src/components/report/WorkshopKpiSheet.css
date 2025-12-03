@@ -21,6 +21,17 @@
   overflow: auto; /* ✅ 시트 내용이 넘치면 여기서 세로/가로 스크롤 */
 }
 
+/* 모바일 모드 (≤ 1199px): 높이 제한 제거 */
+@media (max-width: 1199px) {
+  .workshop-kpi-sheet-container {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
 /* Handsontable 기본 스타일 - 밝은 테마 */
 .workshop-kpi-sheet-container .handsontable {
   background-color: #ffffff !important;

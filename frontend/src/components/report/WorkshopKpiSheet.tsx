@@ -44,6 +44,23 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
   
   // 사이드바 오버레이 상태 감지
   const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
+  
+  // 모바일 여부 상태 (1200px 기준)
+  const [isMobile, setIsMobile] = useState(false);
+  
+  /**
+   * 모바일 감지 (1200px 기준)
+   */
+  useEffect(() => {
+    const checkMobile = () => {
+      const viewportWidth = window.innerWidth;
+      setIsMobile(viewportWidth < 1200);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   /**
    * 컬럼 수 계산 (동적으로 처리)
@@ -366,14 +383,23 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
    * 컨테이너 width 기준으로 colWidths 동적으로 계산
    * - 1번 컬럼: 고정 260px
    * - 나머지 14개 컬럼: 남은 너비를 균등 분배 (최소 70px 보장)
+   * 
+   * ResizeObserver 무한 루프 방지를 위해 debounce 적용
    */
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
+    let timeoutId: NodeJS.Timeout | null = null;
+    let lastWidth = 0;
+
     const calcColWidths = () => {
       const totalWidth = container.clientWidth;
       if (!totalWidth || totalWidth <= 0) return;
+      
+      // 너비가 변경되지 않았으면 계산하지 않음 (무한 루프 방지)
+      if (totalWidth === lastWidth) return;
+      lastWidth = totalWidth;
 
       const firstColWidth = 260;
       const otherColCount = columnCount - 1;
@@ -398,14 +424,35 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
 
     // 초기 1회 계산
     calcColWidths();
+    lastWidth = container.clientWidth;
 
-    // 리사이즈 대응
-    const ro = new ResizeObserver(() => {
-      calcColWidths();
+    // 리사이즈 대응 (debounce 적용)
+    const ro = new ResizeObserver((entries) => {
+      // 이전 타이머 취소
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // debounce: 100ms 후에 실행
+      timeoutId = setTimeout(() => {
+        const entry = entries[0];
+        if (entry) {
+          const newWidth = entry.contentRect.width;
+          // 너비만 확인 (높이 변화는 무시하여 무한 루프 방지)
+          if (newWidth !== lastWidth && newWidth > 0) {
+            calcColWidths();
+          }
+        }
+      }, 100);
     });
+    
+    // width만 관찰하도록 설정 (height 변화는 무시)
     ro.observe(container);
 
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       ro.disconnect();
     };
   }, [columnCount]);
@@ -503,6 +550,7 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
         colHeaders={['', 'Benchmark', 'YTD', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
         rowHeaders={false}
         width="100%"
+        height={isMobile ? undefined : height} // 모바일에서는 높이 자동 계산, 데스크톱에서는 지정된 높이 사용
         readOnly={readOnly}
         licenseKey="non-commercial-and-evaluation"
         colWidths={colWidths}
