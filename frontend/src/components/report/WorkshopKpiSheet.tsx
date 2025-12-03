@@ -11,9 +11,10 @@
  * - 읽기 전용 모드 (향후 편집 가능하도록 구조 확장 가능)
  */
 
-import React, { useMemo, useRef, useState, useLayoutEffect, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useLayoutEffect, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { HotTable } from '@handsontable/react';
 import type { CellProperties } from 'handsontable/settings';
+import Handsontable from 'handsontable';
 import { WORKSHOP_KPI_ROWS, WORKSHOP_KPI_COLUMNS } from './workshopKpiLayout';
 import { WORKSHOP_KPI_METRICS, type WorkshopKpiMetricValues } from './workshopKpiMockData';
 import 'handsontable/dist/handsontable.full.css';
@@ -32,13 +33,21 @@ export interface WorkshopKpiSheetProps {
 }
 
 /**
+ * WorkshopKpiSheet에서 외부로 노출할 메서드
+ */
+export interface WorkshopKpiSheetHandle {
+  /** Handsontable 인스턴스 가져오기 */
+  getHotInstance: () => Handsontable | null;
+}
+
+/**
  * WorkshopKpiSheet 컴포넌트
  */
-const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
+const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProps>(({
   periodText = 'Period : 2025-10 (All Dealer)',
   height = 600,
   readOnly = true,
-}) => {
+}, ref) => {
   const hotTableRef = useRef<HotTable | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   
@@ -542,6 +551,22 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
     };
   }, []);
 
+  /**
+   * Handsontable 인스턴스 가져오기
+   */
+  const getHotInstance = (): Handsontable | null => {
+    if (!hotTableRef.current) return null;
+    // @ts-ignore - HotTable의 hotInstance는 런타임에 존재
+    return (hotTableRef.current as any).hotInstance || hotTableRef.current;
+  };
+
+  /**
+   * 외부에서 접근 가능한 메서드 노출
+   */
+  useImperativeHandle(ref, () => ({
+    getHotInstance,
+  }));
+
   return (
     <div className="workshop-kpi-sheet-container" ref={containerRef}>
       <HotTable
@@ -567,7 +592,9 @@ const WorkshopKpiSheet: React.FC<WorkshopKpiSheetProps> = ({
       />
     </div>
   );
-};
+});
+
+WorkshopKpiSheet.displayName = 'WorkshopKpiSheet';
 
 export default WorkshopKpiSheet;
 

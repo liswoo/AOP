@@ -294,6 +294,15 @@
   flex-shrink: 0;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.reports-card-header-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .reports-card-title {
@@ -330,5 +339,57 @@
     min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+  
+  .reports-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Export 버튼 스타일 */
+.reports-export-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reports-export-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.reports-export-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);
+}
+
+.reports-export-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.reports-export-text {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 모바일 모드 */
+@media (max-width: 1199px) {
+  .reports-export-button {
+    width: 100%;
+    justify-content: center;
   }
 }
