@@ -15,6 +15,11 @@ import java.util.List;
 public interface MartWeeklySalesRepository extends JpaRepository<MartWeeklySales, Long> {
 
     /**
+     * 주 시작일로 조회
+     */
+    java.util.Optional<MartWeeklySales> findByWeekStartDate(LocalDate weekStartDate);
+
+    /**
      * 날짜 범위로 조회
      */
     @Query("SELECT m FROM MartWeeklySales m " +

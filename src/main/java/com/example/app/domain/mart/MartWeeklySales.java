@@ -19,6 +19,7 @@ import java.time.LocalDate;
     @UniqueConstraint(columnNames = {"week_start_date"})
 })
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

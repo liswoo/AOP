@@ -182,19 +182,38 @@ public class EtlService {
                 int week = weekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear());
 
                 // 마트 테이블에 저장 또는 업데이트
-                MartWeeklySales martWeeklySales = MartWeeklySales.builder()
-                        .weekStartDate(weekStart)
-                        .weekEndDate(weekEnd)
-                        .year(year)
-                        .week(week)
-                        .totalSalesAmount(totalSalesAmount)
-                        .totalOrderCount(totalOrderCount)
-                        .totalQuantity(totalQuantity)
-                        .totalCustomerCount(totalCustomerCount)
-                        .avgOrderAmount(avgOrderAmount)
-                        .aggregatedDate(LocalDate.now())
-                        .build();
-                martWeeklySalesRepository.save(martWeeklySales);
+                martWeeklySalesRepository.findByWeekStartDate(weekStart)
+                        .ifPresentOrElse(
+                                existing -> {
+                                    // 업데이트
+                                    existing.setWeekEndDate(weekEnd);
+                                    existing.setYear(year);
+                                    existing.setWeek(week);
+                                    existing.setTotalSalesAmount(totalSalesAmount);
+                                    existing.setTotalOrderCount(totalOrderCount);
+                                    existing.setTotalQuantity(totalQuantity);
+                                    existing.setTotalCustomerCount(totalCustomerCount);
+                                    existing.setAvgOrderAmount(avgOrderAmount);
+                                    existing.setAggregatedDate(LocalDate.now());
+                                    martWeeklySalesRepository.save(existing);
+                                },
+                                () -> {
+                                    // 신규 생성
+                                    MartWeeklySales martWeeklySales = MartWeeklySales.builder()
+                                            .weekStartDate(weekStart)
+                                            .weekEndDate(weekEnd)
+                                            .year(year)
+                                            .week(week)
+                                            .totalSalesAmount(totalSalesAmount)
+                                            .totalOrderCount(totalOrderCount)
+                                            .totalQuantity(totalQuantity)
+                                            .totalCustomerCount(totalCustomerCount)
+                                            .avgOrderAmount(avgOrderAmount)
+                                            .aggregatedDate(LocalDate.now())
+                                            .build();
+                                    martWeeklySalesRepository.save(martWeeklySales);
+                                }
+                        );
             }
 
             weekStart = weekStart.plusWeeks(1);
