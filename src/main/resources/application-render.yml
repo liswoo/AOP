@@ -9,11 +9,10 @@ spring:
   
   datasource:
     # Render PostgreSQL 데이터베이스 설정 (환경 변수 사용)
-    # Render에서 Internal Database URL을 사용하는 경우:
-    # Internal Database URL: postgresql://username:password@hostname:port/database
-    # -> SPRING_DATASOURCE_URL=jdbc:postgresql://hostname:port/database
-    # -> SPRING_DATASOURCE_USERNAME=username
-    # -> SPRING_DATASOURCE_PASSWORD=password
+    # Render에서 다음 환경 변수를 설정하세요:
+    # - SPRING_DATASOURCE_URL=jdbc:postgresql://hostname:port/database
+    # - SPRING_DATASOURCE_USERNAME=username
+    # - SPRING_DATASOURCE_PASSWORD=password
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/aop_db}
     username: ${SPRING_DATASOURCE_USERNAME:aop}
     password: ${SPRING_DATASOURCE_PASSWORD:}
