@@ -153,14 +153,16 @@ public class EtlService {
     private void aggregateWeeklySales(LocalDate from, LocalDate to) {
         LocalDate weekStart = from;
         while (!weekStart.isAfter(to)) {
+            final LocalDate currentWeekStart = weekStart; // final 변수로 복사
             LocalDate weekEnd = weekStart.plusDays(6);
             if (weekEnd.isAfter(to)) {
                 weekEnd = to;
             }
+            final LocalDate currentWeekEnd = weekEnd; // final 변수로 복사
 
             // 해당 주의 팩트 데이터 조회
             List<FactSales> factSales = factSalesRepository
-                    .findByTransactionDateBetweenOrderByTransactionDateAsc(weekStart, weekEnd);
+                    .findByTransactionDateBetweenOrderByTransactionDateAsc(currentWeekStart, currentWeekEnd);
 
             if (!factSales.isEmpty()) {
                 // 집계 계산
@@ -178,15 +180,15 @@ public class EtlService {
                         .sum();
                 double avgOrderAmount = totalOrderCount > 0 ? totalSalesAmount / totalOrderCount : 0.0;
 
-                int year = weekStart.getYear();
-                int week = weekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear());
+                int year = currentWeekStart.getYear();
+                int week = currentWeekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear());
 
                 // 마트 테이블에 저장 또는 업데이트
-                martWeeklySalesRepository.findByWeekStartDate(weekStart)
+                martWeeklySalesRepository.findByWeekStartDate(currentWeekStart)
                         .ifPresentOrElse(
                                 existing -> {
                                     // 업데이트
-                                    existing.setWeekEndDate(weekEnd);
+                                    existing.setWeekEndDate(currentWeekEnd);
                                     existing.setYear(year);
                                     existing.setWeek(week);
                                     existing.setTotalSalesAmount(totalSalesAmount);
@@ -200,8 +202,8 @@ public class EtlService {
                                 () -> {
                                     // 신규 생성
                                     MartWeeklySales martWeeklySales = MartWeeklySales.builder()
-                                            .weekStartDate(weekStart)
-                                            .weekEndDate(weekEnd)
+                                            .weekStartDate(currentWeekStart)
+                                            .weekEndDate(currentWeekEnd)
                                             .year(year)
                                             .week(week)
                                             .totalSalesAmount(totalSalesAmount)
