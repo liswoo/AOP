@@ -2,12 +2,12 @@ spring:
   application:
     name: app
   
-  # 프로파일 설정 (기본값: render)
-  # 로컬 개발: SPRING_PROFILES_ACTIVE=local
-  # Render 배포: SPRING_PROFILES_ACTIVE=render (기본값)
+  # 프로파일 설정 (기본값: local)
+  # 로컬 개발: SPRING_PROFILES_ACTIVE=local (기본값)
+  # Render 배포: SPRING_PROFILES_ACTIVE=render
   # Oracle: SPRING_PROFILES_ACTIVE=oracle
   profiles:
-    active: render
+    active: local
   
   # 기본 데이터베이스 설정 (H2 - 테스트용)
   datasource:
