@@ -1,0 +1,62 @@
+# 로컬 개발 환경 설정
+# 사용법: SPRING_PROFILES_ACTIVE=local
+# 또는: java -jar app.jar --spring.profiles.active=local
+
+spring:
+  config:
+    activate:
+      on-profile: local
+  
+  datasource:
+    # 로컬 PostgreSQL 데이터베이스 설정
+    url: jdbc:postgresql://localhost:5432/aop_db
+    username: aop
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+    # PostgreSQL 최적 설정
+    hikari:
+      # 커넥션 풀 설정
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      # PostgreSQL 최적화 옵션
+      connection-test-query: SELECT 1
+      # 커넥션 유효성 검사
+      validation-timeout: 5000
+      # 누수 감지
+      leak-detection-threshold: 60000
+  
+  # JPA 설정 (PostgreSQL)
+  jpa:
+    hibernate:
+      ddl-auto: create  # 시작 시 스키마 생성
+      # validate: 스키마 검증만 수행 (운영 환경 권장)
+      # update: 스키마 자동 업데이트 (개발 환경)
+      # create: 시작 시 스키마 생성 (테스트 환경)
+      # create-drop: 시작 시 생성, 종료 시 삭제 (테스트 환경)
+      # none: 자동 스키마 관리 비활성화
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # PostgreSQL 방언 (자동 감지되지만 명시적으로 설정)
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # PostgreSQL 최적화 설정
+        jdbc:
+          batch_size: 20
+          order_inserts: true
+          order_updates: true
+          time_zone: Asia/Seoul
+        # 쿼리 성능 모니터링
+        generate_statistics: false
+    # 엔티티 스캔 패키지
+    open-in-view: false  # OSIV 비활성화 (권장)
+
+# JWT 설정 (로컬 환경)
+app:
+  jwt:
+    secret: your-secret-key-change-this-in-production-minimum-256-bits
+    expiration-millis: 3600000
+

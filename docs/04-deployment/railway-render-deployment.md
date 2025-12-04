@@ -76,10 +76,15 @@ Railway 프로젝트
 5. **"Variables"** 탭에서 환경 변수 추가:
 
    ```bash
-   # Spring Profile
-   SPRING_PROFILES_ACTIVE=postgresql
+   # Spring Profile (기본값이 render이지만 명시적으로 설정)
+   SPRING_PROFILES_ACTIVE=render
    
    # 데이터베이스 연결 (Railway PostgreSQL 변수 사용)
+   # Internal Database URL을 사용하는 경우:
+   # Internal Database URL: postgresql://username:password@hostname:port/database
+   # -> SPRING_DATASOURCE_URL=jdbc:postgresql://hostname:port/database
+   # -> SPRING_DATASOURCE_USERNAME=username
+   # -> SPRING_DATASOURCE_PASSWORD=password
    SPRING_DATASOURCE_URL=jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
    SPRING_DATASOURCE_USERNAME=${PGUSER}
    SPRING_DATASOURCE_PASSWORD=${PGPASSWORD}
@@ -290,11 +295,26 @@ Render 프로젝트
 4. **"Advanced"** → **"Add Environment Variable"**:
 
    ```bash
-   SPRING_PROFILES_ACTIVE=postgresql
-   SPRING_DATASOURCE_URL=<Internal Database URL>
+   # Spring Profile (기본값이 render이지만 명시적으로 설정)
+   SPRING_PROFILES_ACTIVE=render
+   
+   # 데이터베이스 연결 (Render Internal Database URL 사용)
+   # Internal Database URL: postgresql://aop:password@dpg-xxx:5432/aop_db
+   # -> SPRING_DATASOURCE_URL=jdbc:postgresql://dpg-xxx:5432/aop_db
+   # -> SPRING_DATASOURCE_USERNAME=aop
+   # -> SPRING_DATASOURCE_PASSWORD=password
+   SPRING_DATASOURCE_URL=jdbc:postgresql://dpg-d4ogt163jp1c73dhefm0-a:5432/aop_db
+   SPRING_DATASOURCE_USERNAME=aop
+   SPRING_DATASOURCE_PASSWORD=<Internal Database URL에서 복사한 비밀번호>
+   
+   # 서버 설정
    SERVER_PORT=8080
    SERVER_ADDRESS=0.0.0.0
+   
+   # JWT Secret (강력한 랜덤 문자열로 변경!)
    APP_JWT_SECRET=your-very-secure-secret-key-minimum-256-bits
+   
+   # CORS 허용 (프론트엔드 도메인)
    CORS_ALLOWED_ORIGINS=https://your-frontend-url.onrender.com
    ```
 
@@ -360,20 +380,34 @@ public CorsConfigurationSource corsConfigurationSource() {
 
 ---
 
-## 🔧 공통 설정 파일
+## 🔧 설정 파일 구조
 
-### 1. application-prod.yml 생성
+### 환경별 설정 파일
 
-프로덕션 환경 설정 파일 생성:
+프로젝트는 환경별로 설정 파일을 분리하여 관리합니다:
 
-**파일**: `src/main/resources/application-prod.yml`
+```
+src/main/resources/
+├── application.yml          # 공통 설정 (기본값: render)
+├── application-local.yml   # 로컬 개발 환경 설정
+└── application-render.yml  # Render 배포 환경 설정 (환경 변수 사용)
+```
+
+### Render 배포 환경 설정
+
+**파일**: `src/main/resources/application-render.yml`
+
+이 파일은 이미 환경 변수 기반으로 구성되어 있습니다:
 
 ```yaml
 spring:
+  config:
+    activate:
+      on-profile: render
+  
   datasource:
-    # 환경 변수에서 읽기 (Railway/Render에서 설정)
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME:}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/aop_db}
+    username: ${SPRING_DATASOURCE_USERNAME:aop}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -385,8 +419,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate  # 프로덕션에서는 validate 사용
-    show-sql: false  # 프로덕션에서는 false
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -396,19 +430,25 @@ spring:
     open-in-view: false
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:8080}
   address: ${SERVER_ADDRESS:0.0.0.0}
-
-logging:
-  level:
-    com.example.app: INFO
-    org.springframework: WARN
-    org.hibernate: WARN
 
 app:
   jwt:
     secret: ${APP_JWT_SECRET:your-secret-key-change-this-in-production-minimum-256-bits}
     expiration-millis: 3600000
+```
+
+### 로컬 개발 환경 설정
+
+**파일**: `src/main/resources/application-local.yml`
+
+로컬 개발 시에는 이 파일을 사용합니다:
+
+```bash
+# 로컬 실행 시
+export SPRING_PROFILES_ACTIVE=local
+./gradlew bootRun
 ```
 
 ### 2. .gitignore 확인
@@ -535,4 +575,5 @@ server {
 4. **배포 시작**: 위 가이드에 따라 단계별 배포
 5. **테스트**: 배포 후 모든 기능 테스트
 6. **모니터링**: 로그 및 성능 모니터링 설정
+
 

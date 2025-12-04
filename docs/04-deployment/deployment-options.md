@@ -545,3 +545,4 @@ sudo systemctl status aop-backend
 4. **모니터링 설정**: 로그, 성능 모니터링 도구 설정
 5. **백업 전략**: 데이터베이스 백업 자동화
 
+

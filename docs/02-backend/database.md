@@ -10,11 +10,42 @@
 
 ## 프로파일 기반 설정
 
-이 프로젝트는 Spring Profile을 사용하여 데이터베이스를 쉽게 전환할 수 있습니다.
+이 프로젝트는 Spring Profile을 사용하여 환경별로 설정을 쉽게 전환할 수 있습니다.
 
-- **postgresql**: PostgreSQL 사용 (기본값)
+### 환경별 프로파일
+
+- **render**: Render 배포 환경 (기본값) - 환경 변수 기반 설정
+- **local**: 로컬 개발 환경 - 로컬 PostgreSQL 사용
 - **oracle**: Oracle 사용 (추후 사용 가능)
 - **기본값**: H2 인메모리 데이터베이스 (개발/테스트용)
+
+### 설정 파일 구조
+
+```
+src/main/resources/
+├── application.yml          # 공통 설정 (기본값: render)
+├── application-local.yml    # 로컬 개발 환경 설정
+└── application-render.yml   # Render 배포 환경 설정
+```
+
+### 프로파일 전환 방법
+
+**로컬 개발 환경:**
+```bash
+# 방법 1: 환경 변수
+export SPRING_PROFILES_ACTIVE=local
+./gradlew bootRun
+
+# 방법 2: 명령줄 인자
+./gradlew bootRun --args='--spring.profiles.active=local'
+
+# 방법 3: IDE VM 옵션
+-Dspring.profiles.active=local
+```
+
+**Render 배포 환경:**
+- 기본값이 `render`이므로 별도 설정 불필요
+- 또는 환경 변수: `SPRING_PROFILES_ACTIVE=render`
 
 ## PostgreSQL 설정
 
@@ -40,12 +71,15 @@ GRANT ALL ON SCHEMA public TO aop;
 
 ### 2. 애플리케이션 설정
 
-**파일**: `src/main/resources/application.yml`
+**로컬 개발 환경 설정 파일**: `src/main/resources/application-local.yml`
+
+이 파일은 이미 로컬 PostgreSQL 설정으로 구성되어 있습니다:
 
 ```yaml
 spring:
-  profiles:
-    active: postgresql
+  config:
+    activate:
+      on-profile: local
   
   datasource:
     url: jdbc:postgresql://localhost:5432/aop_db
@@ -71,17 +105,23 @@ spring:
 
 ### 3. 애플리케이션 실행
 
+**로컬 개발 환경:**
+
 ```bash
 # 방법 1: 명령줄에서 프로파일 지정
-./gradlew bootRun --args='--spring.profiles.active=postgresql'
+./gradlew bootRun --args='--spring.profiles.active=local'
 
 # 방법 2: 환경변수 설정
-export SPRING_PROFILES_ACTIVE=postgresql
+export SPRING_PROFILES_ACTIVE=local
 ./gradlew bootRun
 
 # 방법 3: IDE에서 실행 시 VM 옵션에 추가
--Dspring.profiles.active=postgresql
+-Dspring.profiles.active=local
 ```
+
+**Render 배포 환경:**
+
+기본값이 `render`이므로 별도 설정 불필요. Render의 환경 변수만 설정하면 됩니다.
 
 ### 4. 연결 확인
 
@@ -280,19 +320,28 @@ psql -U postgres
 \du  -- 사용자 목록 확인
 ```
 
-### 5단계: application.yml 설정 확인
+### 5단계: application-local.yml 설정 확인
 
-`src/main/resources/application.yml` 파일에서 다음 설정이 올바른지 확인:
+`src/main/resources/application-local.yml` 파일에서 다음 설정이 올바른지 확인:
 
 ```yaml
 spring:
-  profiles:
-    active: postgresql
+  config:
+    activate:
+      on-profile: local
   
   datasource:
     url: jdbc:postgresql://localhost:5432/aop_db
     username: aop
     password: 1234
+```
+
+또한 `application.yml`에서 프로파일이 `local`로 설정되어 있는지 확인:
+
+```yaml
+spring:
+  profiles:
+    active: local  # 또는 환경 변수 SPRING_PROFILES_ACTIVE=local
 ```
 
 ## 일반적인 에러 메시지와 해결 방법
@@ -310,5 +359,6 @@ spring:
 - [데이터 아키텍처](../01-architecture/data-architecture.md) - 3계층 데이터 웨어하우스 구조
 - [백엔드 개요](overview.md) - 백엔드 프로젝트 구조
 - [데이터베이스 설정 가이드](../04-deployment/database-setup.md) - 상세 설정 가이드
+
 
 

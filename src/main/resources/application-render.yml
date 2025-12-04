@@ -1,0 +1,88 @@
+# Render 배포 환경 설정
+# 사용법: SPRING_PROFILES_ACTIVE=render (기본값)
+# 환경 변수를 통해 데이터베이스 연결 정보를 설정합니다.
+
+spring:
+  config:
+    activate:
+      on-profile: render
+  
+  datasource:
+    # Render PostgreSQL 데이터베이스 설정 (환경 변수 사용)
+    # Render에서 Internal Database URL을 사용하는 경우:
+    # Internal Database URL: postgresql://username:password@hostname:port/database
+    # -> SPRING_DATASOURCE_URL=jdbc:postgresql://hostname:port/database
+    # -> SPRING_DATASOURCE_USERNAME=username
+    # -> SPRING_DATASOURCE_PASSWORD=password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/aop_db}
+    username: ${SPRING_DATASOURCE_USERNAME:aop}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    # PostgreSQL 최적 설정
+    hikari:
+      # 커넥션 풀 설정
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      # PostgreSQL 최적화 옵션
+      connection-test-query: SELECT 1
+      # 커넥션 유효성 검사
+      validation-timeout: 5000
+      # 누수 감지
+      leak-detection-threshold: 60000
+  
+  # JPA 설정 (PostgreSQL)
+  jpa:
+    hibernate:
+      # 운영 환경에서는 validate 또는 update 권장
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+      # validate: 스키마 검증만 수행 (운영 환경 권장)
+      # update: 스키마 자동 업데이트 (개발 환경)
+      # create: 시작 시 스키마 생성 (테스트 환경)
+      # create-drop: 시작 시 생성, 종료 시 삭제 (테스트 환경)
+      # none: 자동 스키마 관리 비활성화
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}  # 운영 환경에서는 false 권장
+    properties:
+      hibernate:
+        format_sql: true
+        # PostgreSQL 방언 (자동 감지되지만 명시적으로 설정)
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # PostgreSQL 최적화 설정
+        jdbc:
+          batch_size: 20
+          order_inserts: true
+          order_updates: true
+          time_zone: Asia/Seoul
+        # 쿼리 성능 모니터링
+        generate_statistics: false  # 운영 환경에서는 false 권장
+    # 엔티티 스캔 패키지
+    open-in-view: false  # OSIV 비활성화 (권장)
+
+# 서버 설정 (Render 환경 변수 사용)
+server:
+  port: ${PORT:8080}
+  address: ${SERVER_ADDRESS:0.0.0.0}
+
+# 애플리케이션 커스텀 설정 (Render 환경 - 환경 변수 사용)
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:your-secret-key-change-this-in-production-minimum-256-bits}
+    expiration-millis: 3600000
+  # 데이터베이스 연결 테스트 (운영 환경에서는 비활성화 권장)
+  db:
+    test:
+      enabled: ${APP_DB_TEST_ENABLED:false}
+
+# 로깅 설정 (운영 환경 최적화)
+logging:
+  level:
+    com.example.app: ${LOG_LEVEL:INFO}
+    org.springframework.security: ${LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${LOG_LEVEL:INFO}
+    org.hibernate.type.descriptor.sql.BasicBinder: OFF
+    org.postgresql: INFO
+    com.zaxxer.hikari: INFO
+    org.springframework.web: ${LOG_LEVEL:INFO}
+

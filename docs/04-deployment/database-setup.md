@@ -51,12 +51,15 @@ GRANT ALL ON SCHEMA public TO aop;
 
 ### 3. 애플리케이션 설정
 
-**파일**: `src/main/resources/application.yml`
+**로컬 개발 환경 설정 파일**: `src/main/resources/application-local.yml`
+
+이 파일은 이미 로컬 PostgreSQL 설정으로 구성되어 있습니다:
 
 ```yaml
 spring:
-  profiles:
-    active: postgresql
+  config:
+    activate:
+      on-profile: local
   
   datasource:
     url: jdbc:postgresql://localhost:5432/aop_db
@@ -82,17 +85,23 @@ spring:
 
 ### 4. 애플리케이션 실행
 
+**로컬 개발 환경:**
+
 ```bash
 # 방법 1: 명령줄에서 프로파일 지정
-./gradlew bootRun --args='--spring.profiles.active=postgresql'
+./gradlew bootRun --args='--spring.profiles.active=local'
 
 # 방법 2: 환경변수 설정
-export SPRING_PROFILES_ACTIVE=postgresql
+export SPRING_PROFILES_ACTIVE=local
 ./gradlew bootRun
 
 # 방법 3: IDE에서 실행 시 VM 옵션에 추가
--Dspring.profiles.active=postgresql
+-Dspring.profiles.active=local
 ```
+
+**Render 배포 환경:**
+
+기본값이 `render`이므로 별도 설정 불필요. Render의 환경 변수만 설정하면 됩니다.
 
 ### 5. 연결 확인
 
@@ -251,19 +260,28 @@ sudo iptables -L
 **문제**: 방화벽이 포트 5432를 차단함  
 **해결**: 방화벽에서 포트 5432를 허용하세요.
 
-### 7단계: application.yml 설정 확인
+### 7단계: application-local.yml 설정 확인
 
-`src/main/resources/application.yml` 파일에서 다음 설정이 올바른지 확인:
+`src/main/resources/application-local.yml` 파일에서 다음 설정이 올바른지 확인:
 
 ```yaml
 spring:
-  profiles:
-    active: postgresql  # 프로파일이 postgresql로 설정되어 있는지 확인
+  config:
+    activate:
+      on-profile: local
   
   datasource:
     url: jdbc:postgresql://localhost:5432/aop_db  # 데이터베이스 이름 확인
     username: aop  # 사용자 이름 확인
     password: 1234  # 비밀번호 확인
+```
+
+또한 `application.yml`에서 프로파일이 `local`로 설정되어 있는지 확인:
+
+```yaml
+spring:
+  profiles:
+    active: local  # 또는 환경 변수 SPRING_PROFILES_ACTIVE=local
 ```
 
 **문제**: 설정값이 잘못됨  
