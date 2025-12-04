@@ -311,18 +311,32 @@ public class EtlService {
                             Collectors.summingDouble(FactInventory::getQuantity)
                     ));
 
-            // 마트 테이블에 저장
+            // 마트 테이블에 저장 또는 업데이트
+            final LocalDate currentDate = current; // final 변수로 복사
             for (Map.Entry<String, Double> entry : inventoryByType.entrySet()) {
                 String inventoryType = entry.getKey();
                 Double totalQuantity = entry.getValue();
+                final String currentInventoryType = inventoryType; // final 변수로 복사
 
-                MartDailyInventory martDailyInventory = MartDailyInventory.builder()
-                        .inventoryDate(current)
-                        .inventoryType(inventoryType)
-                        .totalQuantity(totalQuantity)
-                        .aggregatedDate(LocalDate.now())
-                        .build();
-                martDailyInventoryRepository.save(martDailyInventory);
+                martDailyInventoryRepository.findByInventoryDateAndInventoryType(currentDate, currentInventoryType)
+                        .ifPresentOrElse(
+                                existing -> {
+                                    // 업데이트
+                                    existing.setTotalQuantity(totalQuantity);
+                                    existing.setAggregatedDate(LocalDate.now());
+                                    martDailyInventoryRepository.save(existing);
+                                },
+                                () -> {
+                                    // 신규 생성
+                                    MartDailyInventory martDailyInventory = MartDailyInventory.builder()
+                                            .inventoryDate(currentDate)
+                                            .inventoryType(currentInventoryType)
+                                            .totalQuantity(totalQuantity)
+                                            .aggregatedDate(LocalDate.now())
+                                            .build();
+                                    martDailyInventoryRepository.save(martDailyInventory);
+                                }
+                        );
             }
         }
     }
@@ -349,19 +363,34 @@ public class EtlService {
                             Collectors.summingDouble(FactDowntime::getDowntimeHours)
                     ));
 
-            // 마트 테이블에 저장
+            // 마트 테이블에 저장 또는 업데이트
+            final LocalDate currentDate = current; // final 변수로 복사
             for (String lineName : downtimeCostByLine.keySet()) {
                 Double totalCost = downtimeCostByLine.get(lineName);
                 Double totalHours = downtimeHoursByLine.getOrDefault(lineName, 0.0);
+                final String currentLineName = lineName; // final 변수로 복사
 
-                MartDailyDowntime martDailyDowntime = MartDailyDowntime.builder()
-                        .downtimeDate(current)
-                        .lineName(lineName)
-                        .totalDowntimeCost(totalCost)
-                        .totalDowntimeHours(totalHours)
-                        .aggregatedDate(LocalDate.now())
-                        .build();
-                martDailyDowntimeRepository.save(martDailyDowntime);
+                martDailyDowntimeRepository.findByDowntimeDateAndLineName(currentDate, currentLineName)
+                        .ifPresentOrElse(
+                                existing -> {
+                                    // 업데이트
+                                    existing.setTotalDowntimeCost(totalCost);
+                                    existing.setTotalDowntimeHours(totalHours);
+                                    existing.setAggregatedDate(LocalDate.now());
+                                    martDailyDowntimeRepository.save(existing);
+                                },
+                                () -> {
+                                    // 신규 생성
+                                    MartDailyDowntime martDailyDowntime = MartDailyDowntime.builder()
+                                            .downtimeDate(currentDate)
+                                            .lineName(currentLineName)
+                                            .totalDowntimeCost(totalCost)
+                                            .totalDowntimeHours(totalHours)
+                                            .aggregatedDate(LocalDate.now())
+                                            .build();
+                                    martDailyDowntimeRepository.save(martDailyDowntime);
+                                }
+                        );
             }
         }
     }

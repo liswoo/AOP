@@ -15,6 +15,12 @@ import java.util.List;
 public interface MartDailyDowntimeRepository extends JpaRepository<MartDailyDowntime, Long> {
 
     /**
+     * 날짜와 라인명으로 조회
+     */
+    java.util.Optional<MartDailyDowntime> findByDowntimeDateAndLineName(
+            LocalDate downtimeDate, String lineName);
+
+    /**
      * 날짜 범위로 조회
      */
     List<MartDailyDowntime> findByDowntimeDateBetweenOrderByDowntimeDateAsc(

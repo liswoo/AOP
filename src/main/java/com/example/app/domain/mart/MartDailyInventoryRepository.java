@@ -15,6 +15,12 @@ import java.util.List;
 public interface MartDailyInventoryRepository extends JpaRepository<MartDailyInventory, Long> {
 
     /**
+     * 날짜와 재고 유형으로 조회
+     */
+    java.util.Optional<MartDailyInventory> findByInventoryDateAndInventoryType(
+            LocalDate inventoryDate, String inventoryType);
+
+    /**
      * 날짜 범위로 조회
      */
     List<MartDailyInventory> findByInventoryDateBetweenOrderByInventoryDateAsc(
