@@ -43,6 +43,9 @@ public class JwtTokenProvider {
     /**
      * JWT 서명에 사용할 SecretKey
      * 매번 생성하지 않고 한 번만 생성하여 재사용합니다.
+     * 
+     * JWT HMAC-SHA 알고리즘은 최소 256비트(32바이트)의 키가 필요합니다.
+     * 키가 짧으면 자동으로 SHA-256 해시를 사용하여 확장합니다.
      */
     private SecretKey getSecretKey() {
         String secret = jwtProperties.getSecret();
@@ -50,7 +53,24 @@ public class JwtTokenProvider {
             log.error("JWT secret이 설정되지 않았습니다. application.yml의 app.jwt.secret을 확인하세요.");
             throw new IllegalStateException("JWT secret이 설정되지 않았습니다. application.yml의 app.jwt.secret을 확인하세요.");
         }
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        
+        // JWT HMAC-SHA 알고리즘은 최소 256비트(32바이트)의 키가 필요합니다.
+        // 키가 짧으면 SHA-256 해시를 사용하여 32바이트로 확장합니다.
+        if (keyBytes.length < 32) {
+            log.warn("JWT secret이 너무 짧습니다 ({} bytes). SHA-256 해시를 사용하여 32바이트로 확장합니다. " +
+                    "프로덕션 환경에서는 최소 32바이트 이상의 긴 secret을 사용하는 것을 권장합니다.", keyBytes.length);
+            try {
+                java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+                keyBytes = digest.digest(keyBytes);
+            } catch (java.security.NoSuchAlgorithmException e) {
+                log.error("SHA-256 알고리즘을 찾을 수 없습니다.", e);
+                throw new IllegalStateException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
+            }
+        }
+        
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**
