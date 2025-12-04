@@ -14,8 +14,9 @@ import axios, { AxiosError } from 'axios';
 // axios 인스턴스 생성
 // baseURL을 설정하면 모든 요청이 이 URL을 기본으로 사용합니다.
 // 예: apiClient.get('/auth/me') → http://localhost:8080/api/auth/me
+// 환경 변수 VITE_API_BASE_URL이 설정되어 있으면 사용하고, 없으면 로컬 개발 서버 사용
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
