@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Spring Security 설정 클래스
@@ -80,8 +81,12 @@ public class SecurityConfig {
         // 환경 변수에서 읽거나 기본값 사용
         String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
-            // 쉼표로 구분된 여러 오리진 지원
-            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+            // 쉼표로 구분된 여러 오리진 지원 (공백 제거)
+            List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(java.util.stream.Collectors.toList());
+            configuration.setAllowedOrigins(origins);
         } else {
             // 기본값: 로컬 개발 서버
             configuration.setAllowedOrigins(List.of("http://localhost:5173"));
