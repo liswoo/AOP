@@ -22,6 +22,8 @@ Spring Boot 3.x 기반의 풀스택 웹 애플리케이션입니다. 백엔드(S
 - [컴포넌트](docs/03-frontend/components.md) - 주요 컴포넌트 설명
 
 ### 🚀 배포 및 설정
+- [배포 옵션 가이드](docs/04-deployment/deployment-options.md) - 다양한 배포 방법 비교 및 선택 가이드
+- [Railway / Render 배포 가이드](docs/04-deployment/railway-render-deployment.md) - Railway 또는 Render를 사용한 배포 상세 가이드
 - [외부 접속 설정](docs/04-deployment/external-access.md) - 외부 네트워크 접속 가이드
 - [데이터베이스 설정](docs/04-deployment/database-setup.md) - PostgreSQL/H2 데이터베이스 설정
 - [의존성 관리](docs/04-deployment/dependencies.md) - 의존성 버전 관리 및 호환성 가이드

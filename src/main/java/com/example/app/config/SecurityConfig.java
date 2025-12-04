@@ -77,8 +77,15 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // 허용할 오리진(프론트엔드 주소)
-        // React 개발 서버 주소
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        // 환경 변수에서 읽거나 기본값 사용
+        String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+        if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
+            // 쉼표로 구분된 여러 오리진 지원
+            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        } else {
+            // 기본값: 로컬 개발 서버
+            configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        }
         
         // 허용할 HTTP 메서드
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
@@ -152,16 +159,8 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // CORS 설정을 직접 생성
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        // CORS 설정을 직접 생성 (corsConfigurationSource 빈 사용)
+        CorsConfigurationSource source = corsConfigurationSource();
         
         http
             // CSRF 보호 비활성화 (JWT 기반 API 서버이므로 불필요)
