@@ -235,3 +235,4 @@ npm run build
 - [데이터베이스 설정](database-setup.md) - 데이터베이스 설정 가이드
 - [백엔드 개요](../02-backend/overview.md) - 백엔드 프로젝트 구조
 
+

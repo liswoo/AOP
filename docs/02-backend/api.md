@@ -456,3 +456,4 @@ PATCH /api/profile/password
 - [인증/인가](authentication.md) - JWT 기반 인증 시스템
 - [백엔드 개요](overview.md) - 백엔드 프로젝트 구조
 
+

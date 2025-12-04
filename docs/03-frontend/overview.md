@@ -11,6 +11,7 @@
 - **Chart.js / react-chartjs-2** - 차트 라이브러리
 - **Axios** - HTTP 클라이언트
 - **Handsontable** - 스프레드시트 컴포넌트
+- **ExcelJS** - 엑셀 파일 생성 및 스타일링 라이브러리
 
 ## 프로젝트 구조
 
@@ -110,6 +111,7 @@ frontend/
 - **리포트 선택**: 검색 결과에서 리포트 선택
 - **Period 필터**: Last 7 Days, This Month, Last Month, Custom Range 옵션
 - **Workshop KPI Sheet**: Handsontable을 사용한 스프레드시트 형태의 리포트 표시
+- **엑셀 Export**: ExcelJS를 사용한 엑셀 파일 내보내기 (스타일 및 병합 유지)
 - **반응형 레이아웃**: 모바일/데스크톱 지원
 
 ## 설치 및 실행

@@ -136,6 +136,15 @@ const { user, login, logout, isAuthenticated } = useAuth();
 - Workshop KPI Sheet 표시
   - Handsontable을 사용한 스프레드시트
   - Period 필터에 따라 Period 텍스트 자동 업데이트
+- 엑셀 Export 기능
+  - ExcelJS를 사용한 엑셀 파일 내보내기
+  - 스타일 유지: 컬럼 색상, 셀 병합, 텍스트 스타일
+  - Title/Section 행: 빨간 배경, 흰색 텍스트
+  - Period 행: 연한 회색 배경
+  - 숫자 셀: 우측 정렬, 천 단위 구분
+  - 음수 값: 빨간색 텍스트
+  - 셀 병합: Title, Period, Section 행 전체 컬럼 병합
+  - 파일명: `{리포트 제목}_{날짜}.xlsx`
 - 반응형 레이아웃 지원
   - 1200px 기준 모바일/데스크톱 구분
   - 모바일: 필터 바 세로 배치, 검색창과 선택창 세로 배치
@@ -152,6 +161,16 @@ const { user, login, logout, isAuthenticated } = useAuth();
 1. Period 옵션 선택 (Last 7 Days, This Month, Last Month, Custom Range)
 2. Custom Range 선택 시 시작일과 종료일 입력
 3. 선택한 기간에 따라 리포트의 Period 텍스트가 자동 업데이트됨
+
+**엑셀 Export 사용법**:
+1. 리포트 카드 헤더 오른쪽의 "Export Excel" 버튼 클릭
+2. 엑셀 파일이 자동으로 다운로드됨
+3. 다운로드된 파일에는 Handsontable의 스타일과 병합이 그대로 반영됨
+   - Title/Section 행의 빨간 배경
+   - Period 행의 회색 배경
+   - 셀 병합 (Title, Period, Section 행)
+   - 숫자 서식 (천 단위 구분, 우측 정렬)
+   - 음수 값 빨간색 표시
 
 ## 공통 컴포넌트
 
@@ -289,6 +308,37 @@ interface DashboardCardProps {
 - Workshop KPI 데이터 표시
 - Handsontable을 사용한 스프레드시트
 - 사이드바 blur 효과 지원
+- 외부에서 Handsontable 인스턴스 접근 가능 (forwardRef 사용)
+
+**Props**:
+```typescript
+interface WorkshopKpiSheetProps {
+  periodText?: string;  // Period 텍스트
+  height?: number;      // 시트 높이 (픽셀)
+  readOnly?: boolean;   // 읽기 전용 여부
+}
+```
+
+**외부 접근 메서드**:
+```typescript
+interface WorkshopKpiSheetHandle {
+  getHotInstance: () => Handsontable | null;  // Handsontable 인스턴스 가져오기
+}
+```
+
+**사용 예시**:
+```typescript
+const sheetRef = useRef<WorkshopKpiSheetHandle>(null);
+
+// Handsontable 인스턴스 가져오기
+const hotInstance = sheetRef.current?.getHotInstance();
+
+<WorkshopKpiSheet
+  ref={sheetRef}
+  periodText="Period : 2025-10 (All Dealer)"
+  readOnly={true}
+/>
+```
 
 ## 관련 문서
 

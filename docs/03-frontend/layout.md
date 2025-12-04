@@ -525,6 +525,104 @@ useEffect(() => {
    - 모든 높이 제한을 제거하고 콘텐츠 높이에 맞춰 자연스럽게 늘어나도록 설정
    - `flex: 1` 대신 `flex: none` 사용
 
+## Reports 페이지 스크롤바 사라짐/이중 스크롤 문제
+
+### 문제 상황
+
+Reports 페이지에서 Handsontable을 사용할 때 다음과 같은 스크롤 문제가 발생했습니다:
+1. **이중 스크롤바**: 부모 컨테이너(`overflow: auto`)와 Handsontable 자체 스크롤바가 동시에 표시됨
+2. **스크롤바 사라짐**: `height="100%"` 설정 시, Flexbox 레이아웃 내에서 높이 계산 문제로 스크롤바가 렌더링되지 않음
+
+### 해결 방법
+
+#### 1. 높이 계산 방식 변경
+
+`height="100%"` 대신 `ResizeObserver`를 사용하여 컨테이너의 정확한 픽셀 높이를 계산하여 Handsontable에 전달합니다.
+
+**WorkshopKpiSheet.tsx 수정:**
+
+```typescript
+// 테이블 높이 상태
+const [tableHeight, setTableHeight] = useState<number | undefined>(undefined);
+
+useLayoutEffect(() => {
+  const container = containerRef.current;
+  if (!container) return;
+
+  // 모바일에서는 높이 계산 안 함 (자동 높이 사용)
+  if (isMobile) {
+    setTableHeight(undefined);
+    return;
+  }
+
+  const updateHeight = () => {
+    if (!container) return;
+    const height = container.clientHeight;
+    
+    // padding 등을 제외한 순수 콘텐츠 높이 계산
+    const computedStyle = window.getComputedStyle(container);
+    const paddingTop = parseFloat(computedStyle.paddingTop);
+    const paddingBottom = parseFloat(computedStyle.paddingBottom);
+    const contentHeight = height - paddingTop - paddingBottom;
+
+    if (contentHeight > 0) {
+      setTableHeight(contentHeight);
+    }
+  };
+
+  // 초기 계산
+  updateHeight();
+
+  // ResizeObserver로 높이 변화 감지
+  const ro = new ResizeObserver((entries) => {
+    // debounce 처리...
+    updateHeight();
+  });
+
+  ro.observe(container);
+  
+  // ... cleanup
+}, [isMobile]);
+
+// HotTable에 계산된 높이 전달
+<HotTable
+  height={isMobile ? undefined : (tableHeight ?? height)}
+  // ...
+/>
+```
+
+#### 2. CSS 레이아웃 수정
+
+부모 컨테이너가 Flexbox로 동작하여 남은 공간을 정확히 차지하도록 설정합니다.
+
+**ReportsPage.css:**
+
+```css
+.reports-card-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden; /* 이중 스크롤 방지 */
+  display: flex;
+  flex-direction: column;
+}
+```
+
+**WorkshopKpiSheet.css:**
+
+```css
+.workshop-kpi-sheet-container {
+  flex: 1;
+  width: 100%;
+  overflow: hidden; /* 스크롤은 Handsontable 내부에서 처리 */
+}
+```
+
+### 핵심 원리
+
+1. **명시적 높이 전달**: Handsontable은 `height="100%"`보다 명시적인 픽셀 값(`height={500}`)을 받을 때 스크롤바를 더 안정적으로 렌더링합니다.
+2. **ResizeObserver 활용**: 브라우저 창 크기 조절 등에 대응하기 위해 컨테이너 크기를 실시간으로 감지합니다.
+3. **Overflow 제어**: 부모 컨테이너의 스크롤을 막고(`overflow: hidden`), Handsontable 내부 스크롤만 활성화하여 이중 스크롤을 방지합니다.
+
 ## 코드 참고 시 주의사항
 
 ### ⚠️ 절대 하지 말아야 할 것

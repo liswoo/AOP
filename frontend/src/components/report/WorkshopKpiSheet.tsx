@@ -26,8 +26,8 @@ import './WorkshopKpiSheet.css';
 export interface WorkshopKpiSheetProps {
   /** Period 텍스트 (예: "Period : 2025-10 (All Dealer)") */
   periodText?: string;
-  /** 시트 높이 (픽셀) */
-  height?: number;
+  /** 시트 높이 (픽셀 또는 "100%") */
+  height?: number | string;
   /** 읽기 전용 여부 (기본: true) */
   readOnly?: boolean;
 }
@@ -50,13 +50,13 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
 }, ref) => {
   const hotTableRef = useRef<HotTable | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  
+
   // 사이드바 오버레이 상태 감지
   const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
-  
+
   // 모바일 여부 상태 (1200px 기준)
   const [isMobile, setIsMobile] = useState(false);
-  
+
   /**
    * 모바일 감지 (1200px 기준)
    */
@@ -75,7 +75,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
    * 컬럼 수 계산 (동적으로 처리)
    */
   const columnCount = WORKSHOP_KPI_COLUMNS.length;
-  
+
   /**
    * 사이드바 오버레이 상태 감지 (app-root의 클래스 확인)
    */
@@ -125,7 +125,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
 
       // 고정 열 요소 찾기 (더 구체적인 선택자 사용)
       const fixedLeftElements = container.querySelectorAll('.ht_clone_left, .ht_clone_top_left');
-      
+
       // 고정 열이 있으면 적용
       if (fixedLeftElements.length > 0) {
         fixedLeftElements.forEach((element: Element) => {
@@ -297,14 +297,14 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
     console.log('WORKSHOP_KPI_ROWS length:', WORKSHOP_KPI_ROWS.length);
     console.log('columnCount:', columnCount);
     console.log('mergeCells:', merges);
-    
+
     // 실제 row 인덱스 확인
     const titleRowIndex = WORKSHOP_KPI_ROWS.findIndex(r => r.type === 'title');
     const periodRowIndex = WORKSHOP_KPI_ROWS.findIndex(r => r.type === 'period');
     const operationsRowIndex = WORKSHOP_KPI_ROWS.findIndex(r => r.sectionKey === 'operations' && r.type === 'section');
     const qualityRowIndex = WORKSHOP_KPI_ROWS.findIndex(r => r.sectionKey === 'quality' && r.type === 'section');
     const financialsRowIndex = WORKSHOP_KPI_ROWS.findIndex(r => r.sectionKey === 'financials' && r.type === 'section');
-    
+
     console.log('Row indices:', {
       title: titleRowIndex,
       period: periodRowIndex,
@@ -373,7 +373,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
           const value = tableData[row]?.[col];
           if (typeof value === 'number') {
             cellProps.className = 'ht-cell-metric-number';
-            
+
             // Variance% 지표는 음수일 때 빨간색
             if (rowConfig.label?.includes('Variance%') && value < 0) {
               cellProps.className += ' ht-cell-negative';
@@ -399,13 +399,13 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
     const container = containerRef.current;
     if (!container) return;
 
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let lastWidth = 0;
 
     const calcColWidths = () => {
       const totalWidth = container.clientWidth;
       if (!totalWidth || totalWidth <= 0) return;
-      
+
       // 너비가 변경되지 않았으면 계산하지 않음 (무한 루프 방지)
       if (totalWidth === lastWidth) return;
       lastWidth = totalWidth;
@@ -441,7 +441,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      
+
       // debounce: 100ms 후에 실행
       timeoutId = setTimeout(() => {
         const entry = entries[0];
@@ -454,7 +454,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
         }
       }, 100);
     });
-    
+
     // width만 관찰하도록 설정 (height 변화는 무시)
     ro.observe(container);
 
@@ -485,7 +485,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
 
     // 고정 열 요소 찾기 (ht_clone_left, ht_clone_top_left)
     const fixedLeftElements = container.querySelectorAll('.ht_clone_left, .ht_clone_top_left');
-    
+
     if (fixedLeftElements.length > 0) {
       // 고정 열이 있는 경우 - 고정 열에 blur 적용
       fixedLeftElements.forEach((element: Element) => {
@@ -504,7 +504,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
       const firstColumnCells = container.querySelectorAll(
         '.htCore tbody tr td:first-child, .htCore thead tr th:first-child, .ht_master tbody tr td:first-child, .ht_master thead tr th:first-child'
       );
-      
+
       firstColumnCells.forEach((cell: Element) => {
         const htmlCell = cell as HTMLElement;
         if (isOpen) {
@@ -567,6 +567,67 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
     getHotInstance,
   }));
 
+  // 테이블 높이 상태
+  const [tableHeight, setTableHeight] = useState<number | undefined>(undefined);
+
+  /**
+   * 컨테이너 높이 감지 및 테이블 높이 업데이트
+   */
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // 모바일에서는 높이 계산 안 함
+    if (isMobile) {
+      setTableHeight(undefined);
+      return;
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const updateHeight = () => {
+      if (!container) return;
+      const height = container.clientHeight;
+      // 패딩 등을 고려하여 약간의 여유를 둠 (선택 사항)
+      // container padding이 8px이므로, 내부 높이는 clientHeight - 16px 정도가 될 수 있음
+      // 하지만 box-sizing: border-box이고 padding이 있으므로 clientHeight를 그대로 쓰면 
+      // Handsontable이 컨테이너 크기에 맞게 렌더링됨.
+      // 다만, overflow: hidden이므로 정확한 높이가 필요함.
+      // Handsontable은 부모의 높이를 100% 채우는 것보다 명시적 픽셀 높이를 선호함.
+
+      // 컨테이너의 실제 콘텐츠 영역 높이 계산 (padding 제외)
+      const computedStyle = window.getComputedStyle(container);
+      const paddingTop = parseFloat(computedStyle.paddingTop);
+      const paddingBottom = parseFloat(computedStyle.paddingBottom);
+      const contentHeight = height - paddingTop - paddingBottom;
+
+      if (contentHeight > 0) {
+        setTableHeight(contentHeight);
+      }
+    };
+
+    // 초기 계산
+    updateHeight();
+
+    const ro = new ResizeObserver((entries) => {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      timeoutId = setTimeout(() => {
+        const entry = entries[0];
+        if (entry) {
+          updateHeight();
+        }
+      }, 100);
+    });
+
+    ro.observe(container);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      ro.disconnect();
+    };
+  }, [isMobile]); // isMobile 변경 시 재실행
+
   return (
     <div className="workshop-kpi-sheet-container" ref={containerRef}>
       <HotTable
@@ -575,7 +636,7 @@ const WorkshopKpiSheet = forwardRef<WorkshopKpiSheetHandle, WorkshopKpiSheetProp
         colHeaders={['', 'Benchmark', 'YTD', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
         rowHeaders={false}
         width="100%"
-        height={isMobile ? undefined : height} // 모바일에서는 높이 자동 계산, 데스크톱에서는 지정된 높이 사용
+        height={isMobile ? undefined : (tableHeight ?? height)} // 계산된 높이 사용, 없으면 props height 사용
         readOnly={readOnly}
         licenseKey="non-commercial-and-evaluation"
         colWidths={colWidths}

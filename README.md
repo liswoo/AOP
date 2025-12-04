@@ -24,6 +24,8 @@ Spring Boot 3.x 기반의 풀스택 웹 애플리케이션입니다. 백엔드(S
 ### 🚀 배포 및 설정
 - [외부 접속 설정](docs/04-deployment/external-access.md) - 외부 네트워크 접속 가이드
 - [데이터베이스 설정](docs/04-deployment/database-setup.md) - PostgreSQL/H2 데이터베이스 설정
+- [의존성 관리](docs/04-deployment/dependencies.md) - 의존성 버전 관리 및 호환성 가이드
+- [Node.js 버전 관리](docs/04-deployment/node-version-management.md) - .nvmrc 파일 사용법 및 자동화
 
 ### 📋 기타
 - [이슈 해결 로그](docs/ISSUES.md) - 주요 이슈 및 해결 방법 기록
@@ -33,10 +35,12 @@ Spring Boot 3.x 기반의 풀스택 웹 애플리케이션입니다. 백엔드(S
 ## 🚀 빠른 시작
 
 ### 사전 요구사항
-- Java 17 이상
-- Node.js 18 이상
-- PostgreSQL (선택사항, H2 사용 가능)
-- Gradle (또는 Gradle Wrapper)
+- **Java 17 이상** (현재 프로젝트는 Java 17 사용)
+- **Node.js 18 이상** (현재 프로젝트는 Node.js 18 권장)
+- **PostgreSQL** (선택사항, H2 사용 가능)
+- **Gradle 8.5** (Gradle Wrapper 사용 시 자동 설치)
+
+> 💡 **의존성 관리**: 프로젝트의 의존성 버전은 자동으로 고정됩니다. 자세한 내용은 [의존성 관리 가이드](docs/04-deployment/dependencies.md)를 참고하세요.
 
 ### 1. 프로젝트 클론 및 빌드
 

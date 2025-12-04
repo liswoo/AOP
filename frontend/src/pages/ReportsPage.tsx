@@ -47,18 +47,18 @@ const REPORTS: Report[] = [
 const ReportsPage: React.FC = () => {
   // 선택된 리포트 ID
   const [selectedReportId, setSelectedReportId] = useState<string>(REPORTS[0].id);
-  
+
   // 검색어
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
+
   // Period 필터 상태 (Dashboard 참고)
   const [from, setFrom] = useState<string | null>(null);
   const [to, setTo] = useState<string | null>(null);
   const [periodMode, setPeriodMode] = useState<'recent7' | 'thisMonth' | 'lastMonth' | 'custom'>('recent7');
-  
+
   // 모바일 여부 상태 (1200px 기준)
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // WorkshopKpiSheet ref
   const sheetRef = useRef<WorkshopKpiSheetHandle>(null);
 
@@ -156,7 +156,7 @@ const ReportsPage: React.FC = () => {
       const toMonth = String(toDate.getMonth() + 1).padStart(2, '0');
       const fromYear = fromDate.getFullYear();
       const toYear = toDate.getFullYear();
-      
+
       if (fromYear === toYear && fromMonth === toMonth) {
         return `Period : ${fromYear}-${fromMonth} (All Dealer)`;
       } else {
@@ -197,7 +197,7 @@ const ReportsPage: React.FC = () => {
     try {
       // 데이터 가져오기
       const data = hotInstance.getData() as (string | number | null)[][];
-      
+
       // 컬럼 헤더 가져오기
       const colCount = hotInstance.countCols();
       const colHeaders: string[] = [];
@@ -205,7 +205,7 @@ const ReportsPage: React.FC = () => {
         const header = hotInstance.getColHeader(i);
         colHeaders.push(header ? String(header) : '');
       }
-      
+
       // 병합 정보 계산 (WORKSHOP_KPI_ROWS 기반)
       const mergeRanges: Array<{ row: number; col: number; rowspan: number; colspan: number }> = [];
       WORKSHOP_KPI_ROWS.forEach((rowConfig, rowIndex) => {
@@ -219,11 +219,11 @@ const ReportsPage: React.FC = () => {
           });
         }
       });
-      
+
       // 워크북 생성
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Report');
-      
+
       // 컬럼 너비 설정
       const colWidths: number[] = [];
       for (let i = 0; i < colCount; i++) {
@@ -234,7 +234,7 @@ const ReportsPage: React.FC = () => {
         { width: colWidths[0] || 15 }, // 첫 번째 컬럼
         ...colHeaders.slice(1).map((_, idx) => ({ width: colWidths[idx + 1] || 15 })),
       ];
-      
+
       // 헤더 행 추가
       const headerRow = worksheet.addRow(['', ...colHeaders]);
       headerRow.font = { bold: true, size: 12 };
@@ -245,20 +245,20 @@ const ReportsPage: React.FC = () => {
       };
       headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
       headerRow.height = 20;
-      
+
       // 데이터 행 추가
       data.forEach((row, rowIndex) => {
         const excelRow = worksheet.addRow(row);
         excelRow.height = 20;
-        
+
         // 각 셀에 스타일 적용
         row.forEach((cellValue, colIndex) => {
           const cell = excelRow.getCell(colIndex + 1);
-          
+
           // Handsontable의 셀 정보 가져오기
           const cellMeta = hotInstance.getCellMeta(rowIndex, colIndex);
           const className = cellMeta?.className || '';
-          
+
           // Title 행 스타일 (빨간 배경, 흰색 텍스트)
           if (className.includes('kpi-title-cell')) {
             cell.fill = {
@@ -306,7 +306,7 @@ const ReportsPage: React.FC = () => {
           }
         });
       });
-      
+
       // 셀 병합 적용
       mergeRanges.forEach((merge) => {
         // ExcelJS는 1-based 인덱스를 사용하므로 +1
@@ -318,7 +318,7 @@ const ReportsPage: React.FC = () => {
           merge.col + 1 + (merge.colspan - 1)
         );
       });
-      
+
       // 모든 셀에 테두리 추가
       worksheet.eachRow((row, rowNumber) => {
         row.eachCell((cell) => {
@@ -330,11 +330,11 @@ const ReportsPage: React.FC = () => {
           };
         });
       });
-      
+
       // 파일명 생성
       const sanitizedTitle = selectedReport.title.replace(/[^a-zA-Z0-9가-힣\s]/g, '_');
       const fileName = `${sanitizedTitle}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      
+
       // 파일 다운로드
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
